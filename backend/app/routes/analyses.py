@@ -1,16 +1,12 @@
 from __future__ import annotations
 
-import asyncio
-from datetime import datetime
+from uuid import UUID
 
-from fastapi import APIRouter, BackgroundTasks, HTTPException
+from fastapi import APIRouter, HTTPException
 from pydantic import BaseModel, ConfigDict
 
 from ..agent.runner import AgentRunner
 from ..models.analysis import AnalysisJob, AnalysisResult
-from ..models.crew import Crew
-from ..models.site import Site
-from ..models.task import Task
 from ..services.analysis_service import AnalysisService
 from ..services.cache import analysis_store
 
@@ -21,48 +17,57 @@ agent_runner = AgentRunner()
 
 
 class AnalysisCreateRequest(BaseModel):
-    """Validated single-site request; omitted fields select the bundled demo scenario."""
+    """The narrow slice accepts an empty body and runs its bundled demo scenario."""
 
     model_config = ConfigDict(extra="forbid")
-    site: Site | None = None
-    crews: list[Crew] | None = None
-    tasks: list[Task] | None = None
-    analysis_time: datetime | None = None
 
 
-async def _run_job(analysis_id: str) -> None:
+async def _complete_job(analysis_id: str) -> AnalysisJob:
     result = await service.run_demo(analysis_id)
     result.agent = await agent_runner.run(result)
     await analysis_store.complete(analysis_id, result)
-
-
-@router.post("/analyses", response_model=AnalysisJob, status_code=202)
-async def create_analysis(
-    background_tasks: BackgroundTasks,
-    request: AnalysisCreateRequest | None = None,
-) -> AnalysisJob:
-    if request and request.site and request.site.site_id != "desertline-yard":
-        raise HTTPException(status_code=422, detail="This hackathon slice supports DesertLine Yard only")
-    analysis_id = await service.create_demo_job()
-    background_tasks.add_task(_run_job, analysis_id)
     job = await analysis_store.get(analysis_id)
     assert job is not None
     return job
 
 
+def _is_analysis_id(value: str) -> bool:
+    try:
+        return str(UUID(value)) == value.lower()
+    except ValueError:
+        return False
+
+
+async def _get_or_replay_job(analysis_id: str) -> AnalysisJob:
+    job = await analysis_store.get(analysis_id)
+    if job is not None:
+        return job
+    if not _is_analysis_id(analysis_id):
+        raise HTTPException(status_code=404, detail="Analysis not found")
+
+    # Vercel instances do not share memory. The only supported analysis is a
+    # deterministic saved-real-data replay, so a valid ID can be reconstructed
+    # safely when a request reaches a fresh instance.
+    return await _complete_job(analysis_id)
+
+
+@router.post("/analyses", response_model=AnalysisJob, status_code=201)
+async def create_analysis(
+    request: AnalysisCreateRequest | None = None,
+) -> AnalysisJob:
+    del request  # The validated body is intentionally empty for this narrow slice.
+    analysis_id = await service.create_demo_job()
+    return await _complete_job(analysis_id)
+
+
 @router.get("/analyses/{analysis_id}", response_model=AnalysisJob)
 async def get_analysis(analysis_id: str) -> AnalysisJob:
-    job = await analysis_store.get(analysis_id)
-    if job is None:
-        raise HTTPException(status_code=404, detail="Analysis not found")
-    return job
+    return await _get_or_replay_job(analysis_id)
 
 
 @router.post("/analyses/{analysis_id}/agent", response_model=AnalysisResult)
 async def run_agent(analysis_id: str) -> AnalysisResult:
-    job = await analysis_store.get(analysis_id)
-    if job is None:
-        raise HTTPException(status_code=404, detail="Analysis not found")
+    job = await _get_or_replay_job(analysis_id)
     if job.result is None:
         raise HTTPException(status_code=409, detail=f"Analysis is {job.status.value}")
     job.result.agent = await agent_runner.run(job.result)
@@ -88,4 +93,3 @@ async def demo_scenario() -> dict:
         "shift": shift,
         "fictional_operation": True,
     }
-

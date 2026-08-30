@@ -8,7 +8,7 @@ subscription, payment method, custom domain, or usage-based overage bill.
 | Source and CI | Public GitHub repository and GitHub Actions | Public-repository Actions usage is free. |
 | Backend | Vercel Hobby Python Function | Hobby has no usage overage billing; the deployment can pause at its limits. |
 | Frontend | Vercel Hobby Next.js deployment | Uses the included `vercel.app` domain and HTTPS. |
-| LLM | Groq free plan, `openai/gpt-oss-120b` | Rate-limited; deterministic analysis remains available when the LLM is unavailable. |
+| LLM | Groq free plan, `qwen/qwen3.6-27b` | Rate-limited; deterministic analysis remains available when the LLM is unavailable. |
 | Heat evidence | Saved responses from successful real FortyGuard activities | Production defaults to `FORTYGUARD_MODE=cached`, so ordinary demos consume no API credits. |
 | Map | MapLibre plus OpenStreetMap public tiles | No API key; retain the built-in SVG fallback and keep traffic at demo scale. |
 | Storage | Bundled JSON plus ephemeral in-memory state | No hosted database or durable user data. |
@@ -25,6 +25,8 @@ subscription, payment method, custom domain, or usage-based overage bill.
 - Do not place provider keys in browser-exposed variables or Git history.
 - If any free allowance is exhausted, the product must fail closed or fall back;
   it must never silently incur a charge.
+- Public analysis creation completes synchronously, and valid job IDs can replay
+  deterministically after a serverless cold start; no shared job database is assumed.
 
 ## Scope limitation
 

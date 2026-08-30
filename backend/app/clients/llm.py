@@ -36,7 +36,10 @@ class ResponsesClient:
             "model": self.config.llm_model,
             "instructions": instructions,
             "input": input_items,
+            "max_output_tokens": self.config.llm_max_output_tokens,
         }
+        if self.config.llm_reasoning_effort:
+            payload["reasoning"] = {"effort": self.config.llm_reasoning_effort}
         if tools:
             payload["tools"] = tools
             # Every HeatShift tool is a read-only view over the completed,
@@ -53,5 +56,10 @@ class ResponsesClient:
                 )
                 response.raise_for_status()
                 return response.json()
+            except httpx.HTTPStatusError as exc:
+                detail = exc.response.text.strip().replace("\n", " ")[:500]
+                raise LLMUnavailable(
+                    f"Responses provider returned HTTP {exc.response.status_code}: {detail}"
+                ) from exc
             except (httpx.HTTPError, ValueError) as exc:
                 raise LLMUnavailable(f"Responses provider unavailable: {exc}") from exc

@@ -77,6 +77,23 @@ def test_llm_unavailable_uses_six_tool_fallback() -> None:
     assert "78.0%" in output.explanation
 
 
+def test_slow_model_falls_back_within_the_agent_time_budget() -> None:
+    result = analysis()
+
+    class SlowLLM:
+        available = True
+
+        async def create(self, *_args, **_kwargs) -> dict:
+            await asyncio.sleep(0.05)
+            return {"output": []}
+
+    output = asyncio.run(
+        AgentRunner(llm=SlowLLM(), model_timeout_seconds=0.01).run(result)
+    )
+    assert output.mode == "deterministic_fallback"
+    assert len(output.tool_trace) == 6
+
+
 def test_model_loop_batches_all_required_tools_and_returns_text() -> None:
     result = analysis()
     llm = StubLLM(

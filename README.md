@@ -79,8 +79,8 @@ The separation is deliberate: FortyGuard supplies evidence; the risk engine and 
 |---|---|---|
 | `GET` | `/health` | Backend, FortyGuard, cache, and optional LLM state |
 | `POST` | `/api/demo` | Run the complete Phoenix replay and agent trace |
-| `POST` | `/api/analyses` | Queue the supported single-site analysis |
-| `GET` | `/api/analyses/{id}` | Poll `queued → fetching_heat → calculating_risk → optimizing → completed/failed` |
+| `POST` | `/api/analyses` | Run and return a completed job for the bundled single-site analysis |
+| `GET` | `/api/analyses/{id}` | Retrieve a job; deterministically reconstruct valid IDs after a serverless cold start |
 | `POST` | `/api/analyses/{id}/agent` | Re-run the auditable agent briefing |
 | `GET` | `/api/demo/scenario` | Inspect the fictional site, crews, and shift |
 
@@ -128,8 +128,9 @@ paid monitoring product, or custom domain is required.
 
 - Backend: import the repository into Vercel with the repository root as the project root. Vercel detects the root `main.py` as FastAPI. Set `LLM_API_KEY` to the Groq API key and keep `FORTYGUARD_MODE=cached`; `FORTYGUARD_API_KEY` is optional in cached mode.
 - Frontend: import the same repository as a second Vercel project with `frontend/` as its root. Set `NEXT_PUBLIC_API_BASE_URL` to the backend origin, then add the frontend origin to the backend's `CORS_ORIGINS`.
-- Backend defaults already select Groq's Responses endpoint and free-plan `openai/gpt-oss-120b` model. If its rate limit is exhausted, the deterministic fallback still returns the official result.
+- Backend defaults select Groq's Responses endpoint and free-plan `qwen/qwen3.6-27b` model, which supports parallel tool orchestration. If its rate limit is exhausted, the deterministic fallback still returns the official result.
 - Live FortyGuard mode is an explicit demo-only option because it can consume API credits; the public default replays labelled responses from successful real activities.
+- The create endpoint completes within one request. Its in-memory cache is only an acceleration layer; valid job IDs are reconstructed from the deterministic replay if a later request reaches a fresh Vercel instance.
 
 Vercel Hobby is free but limited to personal, non-commercial use. This is a public
 hackathon demo deployment, not a commercial production hosting commitment. See

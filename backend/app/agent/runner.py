@@ -1,5 +1,6 @@
 from __future__ import annotations
 
+import asyncio
 import json
 import time
 from typing import Any
@@ -12,6 +13,7 @@ from .tools import AgentToolbox
 
 class AgentRunner:
     MAX_ROUNDS = 6
+    MODEL_TIMEOUT_SECONDS = 90.0
     FALLBACK_SEQUENCE = [
         "get_site_heat",
         "load_shift_plan",
@@ -25,15 +27,18 @@ class AgentRunner:
         self,
         llm: ResponsesClient | None = None,
         toolbox: AgentToolbox | None = None,
+        model_timeout_seconds: float = MODEL_TIMEOUT_SECONDS,
     ):
         self.llm = llm or ResponsesClient()
         self.toolbox = toolbox or AgentToolbox()
+        self.model_timeout_seconds = model_timeout_seconds
 
     async def run(self, analysis: AnalysisResult) -> AgentOutput:
         if self.llm.available:
             try:
-                return await self._run_model_loop(analysis)
-            except LLMUnavailable:
+                async with asyncio.timeout(self.model_timeout_seconds):
+                    return await self._run_model_loop(analysis)
+            except (LLMUnavailable, TimeoutError):
                 pass
         return await self._run_deterministic_fallback(analysis)
 

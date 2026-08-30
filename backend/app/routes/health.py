@@ -17,6 +17,12 @@ async def health() -> dict:
     return {
         "status": "ok",
         "backend": "ready",
+        "version": "1.0.0",
+        "deployment": {
+            "profile": "zero-cost-demo",
+            "stateless_replay_recovery": True,
+            "durable_user_storage": False,
+        },
         "fortyguard": {
             "configured": fortyguard.configured,
             "mode": settings.fortyguard_mode,
@@ -31,4 +37,3 @@ async def health() -> dict:
             "core_analysis_requires_llm": False,
         },
     }
-

@@ -3,7 +3,7 @@
   "framework": "fastapi",
   "functions": {
     "main.py": {
-      "maxDuration": 60,
+      "maxDuration": 120,
       "includeFiles": "data/**",
       "excludeFiles": "{frontend/**,backend/tests/**,scripts/**,docs/**,.github/**}"
     }

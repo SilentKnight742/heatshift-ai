@@ -7,7 +7,7 @@ from ..models.analysis import AnalysisJob, AnalysisResult, AnalysisStatus
 
 
 class AnalysisStore:
-    """Small in-memory job store; demo analyses are reproducible after restarts."""
+    """Per-instance acceleration cache; API routes replay misses deterministically."""
 
     def __init__(self):
         self._jobs: dict[str, AnalysisJob] = {}
@@ -42,6 +42,10 @@ class AnalysisStore:
     async def get(self, analysis_id: str) -> AnalysisJob | None:
         return self._jobs.get(analysis_id)
 
+    async def discard(self, analysis_id: str) -> None:
+        """Remove one item, primarily to exercise cold-instance recovery in tests."""
+        async with self._lock:
+            self._jobs.pop(analysis_id, None)
+
 
 analysis_store = AnalysisStore()
-
