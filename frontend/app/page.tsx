@@ -4,6 +4,7 @@ import dynamic from "next/dynamic";
 import { useCallback, useEffect, useRef, useState } from "react";
 import EvidenceDrawer from "@/components/EvidenceDrawer";
 import GlassesView from "@/components/GlassesView";
+import HeatshieldValidationPanel from "@/components/HeatshieldValidationPanel";
 import RecommendationPanel from "@/components/RecommendationPanel";
 import RiskSummary from "@/components/RiskSummary";
 import ShiftTimeline from "@/components/ShiftTimeline";
@@ -93,6 +94,7 @@ export default function Home() {
           <a href="#overview">Overview</a>
           <a href="#schedule">Shift plan</a>
           <a href="#alerts">Worker alert</a>
+          <a href="#validation">Validation</a>
         </nav>
         <div className="header-status">
           <span><i /> System ready</span>
@@ -186,10 +188,11 @@ export default function Home() {
             </section>
           </>
         )}
+
+        <HeatshieldValidationPanel />
       </div>
 
       <footer><span>HEATSHIFT AI · HACKATHON VERTICAL SLICE</span><span>Real FortyGuard data · Fictional operation · Deterministic policy</span></footer>
     </main>
   );
 }
-

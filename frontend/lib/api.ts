@@ -160,6 +160,79 @@ export interface AnalysisResult {
   } | null;
 }
 
+export interface CorrelationMetric {
+  pearson_r: number;
+  spearman_rho: number;
+}
+
+export interface HeatshieldValidation {
+  status: string;
+  benchmark_type: string;
+  dataset: {
+    title: string;
+    doi: string;
+    landing_page: string;
+    publisher: string;
+    published_date: string;
+    funding: string;
+    license: {
+      name: string;
+      identifier: string;
+      url: string;
+    };
+    records: number;
+    pseudonymous_participants: number;
+    source_file_id: number;
+    source_file_md5: string;
+    derived_csv_sha256: string;
+  };
+  benchmark_profile: {
+    name: string;
+    policy_version: string;
+    workload: string;
+    workload_points: number;
+    acclimatization: string;
+    acclimatization_points: number;
+    clothing_mapping: string;
+    solar_mapping: string;
+    high_risk_threshold: number;
+    fitted_to_dataset: boolean;
+  };
+  metrics: {
+    outcome: string;
+    score_vs_measured_pwc_loss: CorrelationMetric;
+    environmental_points_vs_measured_pwc_loss: CorrelationMetric;
+    comparative_index_correlations: Record<string, CorrelationMetric>;
+    below_high_risk_threshold: {
+      records: number;
+      mean_measured_pwc_loss_percent: number;
+    };
+    at_or_above_high_risk_threshold: {
+      records: number;
+      mean_measured_pwc_loss_percent: number;
+    };
+    mean_loss_difference_percentage_points: number;
+    bands: Array<{
+      band: string;
+      records: number;
+      score_minimum: number;
+      score_maximum: number;
+      mean_measured_pwc_loss_percent: number;
+      median_measured_pwc_loss_percent: number;
+      p25_measured_pwc_loss_percent: number;
+      p75_measured_pwc_loss_percent: number;
+    }>;
+    input_ranges: Record<string, {
+      minimum: number;
+      maximum: number;
+      unit: string;
+    }>;
+  };
+  interpretation: string;
+  limitations: string[];
+  citations: Array<{ title: string; doi: string }>;
+}
+
 const API_BASE = (process.env.NEXT_PUBLIC_API_BASE_URL || "http://localhost:8000").replace(/\/$/, "");
 
 export async function runDemo(signal?: AbortSignal): Promise<AnalysisResult> {
@@ -175,3 +248,11 @@ export async function runDemo(signal?: AbortSignal): Promise<AnalysisResult> {
   return response.json();
 }
 
+export async function getHeatshieldValidation(signal?: AbortSignal): Promise<HeatshieldValidation> {
+  const response = await fetch(`${API_BASE}/api/validation/heatshield`, { signal });
+  if (!response.ok) {
+    const detail = await response.text();
+    throw new Error(`Validation evidence failed (${response.status}): ${detail}`);
+  }
+  return response.json();
+}
