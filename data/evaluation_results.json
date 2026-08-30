@@ -1,0 +1,69 @@
+{
+  "generated_at": "2026-08-30T13:17:01.570142+05:30",
+  "method": "Same fictional shift, crews, constraints, and policy across three real FortyGuard historical replays.",
+  "screening_threshold": 50,
+  "scenarios": [
+    {
+      "date": "2026-08-25",
+      "heatmap_activity_id": "f186e5f4-89dd-4beb-a009-52dc414e0cf4",
+      "environmental_activity_id": "dac9f101-5a11-4d40-b444-bc5f2492c60f",
+      "heatmap_cells": 198,
+      "hourly_observations": 11,
+      "peak_temperature_c": 42.0,
+      "peak_apparent_temperature_c": 46.4,
+      "maximum_screening_score": 100,
+      "highest_risk_task": "Heavy cargo loading",
+      "baseline_exposed_worker_minutes": 1230,
+      "optimized_exposed_worker_minutes": 270,
+      "exposure_reduction_percent": 78.0,
+      "schedule_disruption_minutes": 720,
+      "productivity_retained_percent": 100.0,
+      "tasks_moved": 2,
+      "scenario": "High-heat replay"
+    },
+    {
+      "date": "2026-08-27",
+      "heatmap_activity_id": "08a69f34-434c-4c8e-842a-108694fcafb5",
+      "environmental_activity_id": "f0f75867-c7e2-47de-9a29-4eb45ed5c35a",
+      "heatmap_cells": 198,
+      "hourly_observations": 11,
+      "peak_temperature_c": 41.5,
+      "peak_apparent_temperature_c": 46.1,
+      "maximum_screening_score": 100,
+      "highest_risk_task": "Heavy cargo loading",
+      "baseline_exposed_worker_minutes": 1230,
+      "optimized_exposed_worker_minutes": 270,
+      "exposure_reduction_percent": 78.0,
+      "schedule_disruption_minutes": 660,
+      "productivity_retained_percent": 100.0,
+      "tasks_moved": 2,
+      "scenario": "Afternoon-hotspot replay"
+    },
+    {
+      "date": "2026-08-28",
+      "heatmap_activity_id": "81e55f4d-b51b-4dcc-bd4f-ab4e6c527002",
+      "environmental_activity_id": "eb97f401-3e22-44e1-a537-a86a0aa912db",
+      "heatmap_cells": 198,
+      "hourly_observations": 11,
+      "peak_temperature_c": 41.5,
+      "peak_apparent_temperature_c": 45.3,
+      "maximum_screening_score": 100,
+      "highest_risk_task": "Heavy cargo loading",
+      "baseline_exposed_worker_minutes": 1230,
+      "optimized_exposed_worker_minutes": 270,
+      "exposure_reduction_percent": 78.0,
+      "schedule_disruption_minutes": 660,
+      "productivity_retained_percent": 100.0,
+      "tasks_moved": 2,
+      "scenario": "Lower-heat replay"
+    }
+  ],
+  "aggregate": {
+    "baseline_exposed_worker_minutes": 3690,
+    "optimized_exposed_worker_minutes": 810,
+    "exposure_reduction_percent": 78.0,
+    "productivity_retained_percent": 100.0,
+    "agent_tool_success_rate_percent": 100.0,
+    "agent_tools_succeeded": "6/6 in the demo analysis"
+  }
+}

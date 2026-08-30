@@ -1,0 +1,24 @@
+{
+  "type": "FeatureCollection",
+  "features": [
+    {
+      "type": "Feature",
+      "properties": {
+        "site_id": "desertline-yard",
+        "name": "DesertLine Logistics Yard",
+        "fictional": true
+      },
+      "geometry": {
+        "type": "Polygon",
+        "coordinates": [[
+          [-112.0750, 33.4450],
+          [-112.0600, 33.4450],
+          [-112.0600, 33.4580],
+          [-112.0750, 33.4580],
+          [-112.0750, 33.4450]
+        ]]
+      }
+    }
+  ]
+}
+

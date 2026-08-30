@@ -1,0 +1,94 @@
+{
+  "shift_id": "phoenix-replay-2026-08-28",
+  "date": "2026-08-28",
+  "timezone": "America/Phoenix",
+  "shift_start": "2026-08-28T06:00:00-07:00",
+  "shift_end": "2026-08-28T16:00:00-07:00",
+  "tasks": [
+    {
+      "task_id": "vehicle-inspection",
+      "name": "Vehicle inspection",
+      "crew_id": "alpha",
+      "location": {"longitude": -112.0728, "latitude": 33.4552},
+      "duration_minutes": 60,
+      "workload": "moderate",
+      "scheduled_start": "2026-08-28T06:00:00-07:00",
+      "earliest_start": "2026-08-28T06:00:00-07:00",
+      "latest_finish": "2026-08-28T07:00:00-07:00",
+      "movable": false,
+      "dependencies": [],
+      "shaded": false
+    },
+    {
+      "task_id": "heavy-cargo-loading",
+      "name": "Heavy cargo loading",
+      "crew_id": "bravo",
+      "location": {"longitude": -112.0626, "latitude": 33.4490},
+      "duration_minutes": 120,
+      "workload": "very_heavy",
+      "scheduled_start": "2026-08-28T13:00:00-07:00",
+      "earliest_start": "2026-08-28T06:00:00-07:00",
+      "latest_finish": "2026-08-28T16:00:00-07:00",
+      "movable": true,
+      "dependencies": [],
+      "shaded": false
+    },
+    {
+      "task_id": "asphalt-repair",
+      "name": "Asphalt repair",
+      "crew_id": "alpha",
+      "location": {"longitude": -112.0645, "latitude": 33.4538},
+      "duration_minutes": 90,
+      "workload": "heavy",
+      "scheduled_start": "2026-08-28T12:00:00-07:00",
+      "earliest_start": "2026-08-28T07:00:00-07:00",
+      "latest_finish": "2026-08-28T16:00:00-07:00",
+      "movable": true,
+      "dependencies": ["vehicle-inspection"],
+      "shaded": false
+    },
+    {
+      "task_id": "equipment-maintenance",
+      "name": "Equipment maintenance",
+      "crew_id": "bravo",
+      "location": {"longitude": -112.0690, "latitude": 33.4514},
+      "duration_minutes": 90,
+      "workload": "moderate",
+      "scheduled_start": "2026-08-28T08:30:00-07:00",
+      "earliest_start": "2026-08-28T08:30:00-07:00",
+      "latest_finish": "2026-08-28T10:00:00-07:00",
+      "movable": false,
+      "dependencies": [],
+      "shaded": true
+    },
+    {
+      "task_id": "inventory-scanning",
+      "name": "Inventory scanning",
+      "crew_id": "charlie",
+      "location": {"longitude": -112.0708, "latitude": 33.4474},
+      "duration_minutes": 90,
+      "workload": "light",
+      "scheduled_start": "2026-08-28T10:00:00-07:00",
+      "earliest_start": "2026-08-28T10:00:00-07:00",
+      "latest_finish": "2026-08-28T11:30:00-07:00",
+      "movable": false,
+      "dependencies": [],
+      "shaded": true
+    },
+    {
+      "task_id": "perimeter-inspection",
+      "name": "Perimeter inspection",
+      "crew_id": "charlie",
+      "location": {"longitude": -112.0738, "latitude": 33.4461},
+      "duration_minutes": 60,
+      "workload": "moderate",
+      "scheduled_start": "2026-08-28T14:00:00-07:00",
+      "earliest_start": "2026-08-28T14:00:00-07:00",
+      "latest_finish": "2026-08-28T15:00:00-07:00",
+      "movable": false,
+      "dependencies": [],
+      "shaded": false
+    }
+  ]
+}
+

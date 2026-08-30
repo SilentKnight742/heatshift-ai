@@ -1,0 +1,27 @@
+[
+  {
+    "crew_id": "alpha",
+    "name": "Alpha Crew",
+    "worker_count": 4,
+    "acclimatization_status": "acclimatized",
+    "ppe_level": "medium",
+    "default_workload": "moderate"
+  },
+  {
+    "crew_id": "bravo",
+    "name": "Bravo Crew",
+    "worker_count": 5,
+    "acclimatization_status": "returning",
+    "ppe_level": "high",
+    "default_workload": "heavy"
+  },
+  {
+    "crew_id": "charlie",
+    "name": "Charlie Crew",
+    "worker_count": 3,
+    "acclimatization_status": "new",
+    "ppe_level": "medium",
+    "default_workload": "light"
+  }
+]
+

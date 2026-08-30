@@ -1,0 +1,34 @@
+from __future__ import annotations
+
+from fastapi import APIRouter
+
+from ..clients.fortyguard import FortyGuardClient
+from ..clients.llm import ResponsesClient
+from ..config import settings
+
+
+router = APIRouter(tags=["health"])
+
+
+@router.get("/health")
+async def health() -> dict:
+    fortyguard = FortyGuardClient()
+    llm = ResponsesClient()
+    return {
+        "status": "ok",
+        "backend": "ready",
+        "fortyguard": {
+            "configured": fortyguard.configured,
+            "mode": settings.fortyguard_mode,
+            "cached_real_response_available": (
+                (fortyguard.cache_dir / "fortyguard_demo_response.json").exists()
+                and (fortyguard.cache_dir / "fortyguard_environment_response.json").exists()
+            ),
+        },
+        "llm": {
+            "configured": llm.available,
+            "provider": settings.llm_provider,
+            "core_analysis_requires_llm": False,
+        },
+    }
+

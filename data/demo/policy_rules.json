@@ -1,0 +1,40 @@
+{
+  "version": "1.0.0",
+  "methodology": "Product screening bands for operational prioritization; not a medical or regulatory threshold.",
+  "environmental_apparent_temperature_bands_c": [
+    {"max": 35.0, "points": 8},
+    {"max": 38.0, "points": 20},
+    {"max": 41.0, "points": 32},
+    {"max": 44.0, "points": 45},
+    {"max": null, "points": 55}
+  ],
+  "workload_adjustments": {
+    "light": 0,
+    "moderate": 8,
+    "heavy": 18,
+    "very_heavy": 25
+  },
+  "ppe_adjustments": {
+    "low": 0,
+    "medium": 5,
+    "high": 10
+  },
+  "acclimatization_adjustments": {
+    "acclimatized": 0,
+    "returning": 6,
+    "new": 12
+  },
+  "direct_solar_adjustment": 6,
+  "shaded_adjustment": -5,
+  "direct_solar_hours": [10, 16],
+  "risk_bands": [
+    {"max": 24, "name": "low"},
+    {"max": 49, "name": "moderate"},
+    {"max": 74, "name": "high"},
+    {"max": 100, "name": "critical"}
+  ],
+  "high_risk_threshold": 50,
+  "slot_minutes": 30,
+  "disruption_penalty_per_minute": 1.5
+}
+
