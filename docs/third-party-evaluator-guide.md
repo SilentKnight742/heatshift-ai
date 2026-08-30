@@ -1,14 +1,15 @@
 # HeatShift AI — independent evaluator handbook
 
 This handbook is for someone who has never seen HeatShift AI, does not know the
-heat-safety domain, and wants to test the current public backend thoroughly.
+heat-safety domain, and wants to test the current public product thoroughly.
 It explains the problem, the product, the scenario, which facts are real or
 fictional, how the result is calculated, and exactly what should pass or fail.
 
 ## Start here
 
-The current test target is the deployed backend API:
+The current test targets are the deployed dashboard and backend API:
 
+- Production dashboard: <https://heatshift-ai-zeta.vercel.app>
 - Production API: <https://heatshift-ai-api.vercel.app>
 - Interactive Swagger tester: <https://heatshift-ai-api.vercel.app/docs>
 - Machine-readable OpenAPI schema: <https://heatshift-ai-api.vercel.app/openapi.json>
@@ -18,9 +19,10 @@ You need only a web browser for the basic test. `curl`, Git, and Python 3 are
 useful for the deeper tests. You do **not** need a HeatShift account, a GitHub
 account, a Groq key, or a FortyGuard key.
 
-This evaluation is intentionally backend-only. The frontend source exists, but
-the public dashboard is not part of the current deployed acceptance target yet.
-Do not report the absence of a public dashboard as a backend defect.
+The dashboard is the primary judge-facing product. The API, source, claim oracle,
+and raw evidence remain available for deeper independent verification. The
+dashboard automatically runs the bundled analysis; a first serverless or model
+cold start may take several seconds.
 
 Allow up to 150 seconds for an analysis request before declaring it timed out.
 Most requests are much faster, but the free hosted model and serverless cold
@@ -603,6 +605,33 @@ it is not general-purpose durable job storage.
 
 ## 12. Five-minute no-code test
 
+### Dashboard story
+
+1. Open <https://heatshift-ai-zeta.vercel.app> in a fresh browser window.
+2. Confirm the scenario says DesertLine Logistics Yard is fictional and labels
+   the source as FortyGuard saved-real evidence or a live response.
+3. Wait for **Analysis complete**. Confirm the summary shows 1,230 → 270
+   exposed worker-minutes, 78.0% reduction, and 100% productive time retained.
+4. Confirm the decision summary says two movable tasks were rescheduled, four
+   fixed tasks were preserved, two residual alerts remain, and 100% of task
+   time is retained. It must also say this is not an injury-reduction estimate.
+5. Inspect the before/after timeline. Test all three manager decisions and
+   confirm the page says they are local simulated browser state only.
+6. In the spectacles panel, confirm the badge says **HUD simulation** and the
+   alert says **Supervisor action required**. Test its three buttons and confirm
+   the status says nothing is transmitted.
+7. Open the evidence drawer. Confirm both FortyGuard activity IDs, six
+   successful tool calls, policy version, NIOSH links, and limitations are shown.
+8. Open the HEAT-SHIELD section. Confirm 566 sessions, 32 participants, 0.7718,
+   14.37% versus 50.82%, and 36.45 percentage points. Expand all five
+   limitations and test the dataset, DOI, and CC BY 4.0 links.
+
+Repeat at a mobile width. Pass if cards stack, the timeline alone scrolls
+horizontally, controls remain usable, and the page itself has no horizontal
+overflow.
+
+### API story
+
 1. Open <https://heatshift-ai-api.vercel.app/docs>.
 2. Expand `GET /health`, select **Try it out**, then **Execute**.
 3. Confirm HTTP 200, `status: "ok"`, cached real responses available, and
@@ -872,23 +901,24 @@ success page or a server error.
 
 ### F. Browser boundary and secret safety
 
-**HS-20 — Allowed local-development CORS preflight**
+**HS-20 — Allowed production-dashboard CORS preflight**
 
 ```bash
 curl -i -X OPTIONS \
-  -H 'Origin: http://localhost:3000' \
+  -H 'Origin: https://heatshift-ai-zeta.vercel.app' \
   -H 'Access-Control-Request-Method: POST' \
   -H 'Access-Control-Request-Headers: content-type' \
   https://heatshift-ai-api.vercel.app/api/demo
 ```
 
-Pass: HTTP 200 and `access-control-allow-origin: http://localhost:3000`.
+Pass: HTTP 200 and
+`access-control-allow-origin: https://heatshift-ai-zeta.vercel.app`.
 
 Repeat with `Origin: https://example.com`.
 
-Pass: the response does not grant that origin. The current allowlist contains
-only local frontend origins; the eventual deployed frontend origin will be
-added during frontend deployment.
+Pass: the response does not grant that origin. The production allowlist is
+deliberately narrowed to the deployed dashboard origin. Local development uses
+the local backend defaults instead of weakening the production allowlist.
 
 **HS-21 — No credential leakage**
 
@@ -916,6 +946,46 @@ an availability observation, not a calculation failure.
 If you specifically need to certify the live hosted-model path, use the
 `--require-llm` automated test below. A failure caused only by Groq free-plan
 quota should be reported separately from the deterministic backend result.
+
+### H. Deployed dashboard behavior
+
+**HS-24 — Analysis, result boundary, and decision summary**
+
+Open the dashboard and wait for completion.
+
+Pass: the six primary metrics match section 13; the four decision-summary facts
+are 2 moved, 4 fixed, 2 residual alerts, and 100% retained; the nearby copy says
+real FortyGuard evidence is combined with fictional crews/tasks and does not
+describe injuries prevented.
+
+**HS-25 — Human decision state**
+
+Select Approve, Adjust, and Keep original one at a time, then refresh.
+
+Pass: only one state is selected at a time, every state is labelled simulated
+and local-only, and refresh resets it. No API request submits a manager decision.
+
+**HS-26 — Simulated worker endpoint**
+
+Test Acknowledge, Request assistance, and Report symptoms.
+
+Pass: the UI says HUD simulation, supervisor action required, local demo state,
+and nothing transmitted. No physical device, notification, assistance request,
+or supervisor message is claimed.
+
+**HS-27 — Evidence and empirical validation**
+
+Pass: the drawer exposes both activity IDs, six tools, deterministic policy,
+guidance, and limitations. The separate HEAT-SHIELD panel matches HS-05A,
+preserves all four study qualifiers, links to the source/DOI/license, and expands
+five limitations.
+
+**HS-28 — Responsive and failure-tolerant display**
+
+Pass: desktop and mobile layouts are readable without page-level horizontal
+overflow; the schedule remains intentionally scrollable on a narrow display;
+the analysis and validation surfaces expose independent loading/error/retry
+states; and the deterministic result remains usable if the map falls back.
 
 ## 15. Complete automated public acceptance test
 
@@ -1013,21 +1083,22 @@ offline and public acceptance suites.
 
 ### Current status
 
-The current build is a completed, deployed backend vertical slice rather than a
-general customer platform. It proves one end-to-end decision loop with enough
+The current build is a completed, deployed hackathon vertical slice rather than
+a general customer platform. It proves one end-to-end decision loop with enough
 depth to audit:
 
-- the FastAPI backend and interactive OpenAPI documentation are public on
-  Vercel;
+- the Next.js manager dashboard, FastAPI backend, and interactive OpenAPI
+  documentation are public on Vercel;
 - the fixed Phoenix scenario, environmental normalization, policy scoring,
   constraint-aware scheduling, recommendations, alerts, LLM/fallback agent, and
   serverless recovery paths are implemented;
 - the separate HEAT-SHIELD aggregate endpoint provides real measured-outcome
   evidence for the screening policy;
+- the dashboard presents the map, main metrics, decision summary, before/after
+  schedule, simulated manager and worker controls, agent briefing, evidence
+  drawer, and HEAT-SHIELD validation; and
 - normal tests, an independent standard-library claim oracle, local HTTP smoke
-  tests, GitHub Actions, and public black-box audits pass; and
-- frontend source exists, but a public judge-ready dashboard is deliberately not
-  part of this backend acceptance baseline yet.
+  tests, GitHub Actions, and public black-box audits pass.
 
 This level is appropriate for a hackathon proof of concept: it demonstrates the
 technical and product thesis honestly, but it is not presented as a commercially
@@ -1037,7 +1108,6 @@ operational safety system.
 
 The current build does not provide:
 
-- a publicly deployed frontend yet;
 - user authentication, organizations, or role-based access;
 - arbitrary sites, crews, dates, or uploaded schedules;
 - end-user “bring your own LLM key” storage;
@@ -1056,15 +1126,15 @@ letting anonymous users submit and store private provider keys would require
 authentication, encrypted secret storage, revocation, and abuse controls. It is
 intentionally excluded from this unauthenticated zero-cost slice.
 
-### Next frontend milestone
+### Current frontend boundary
 
-The immediate next phase is to turn the existing APIs into a polished,
-non-technical decision interface following the eight-part display sequence in
-the judge overview. The frontend should prioritize the map and work timeline,
-make the before/after movement visually obvious, keep residual fixed-work risk
-visible, and place provenance and empirical evidence one click away. It should
-not expose raw JSON as the primary experience, although the JSON and Swagger
-contract should remain available for auditors.
+The public dashboard is a polished single-scenario decision interface following
+the eight-part display sequence in the judge overview. Its map and schedule make
+the operational change visible; its decision summary keeps fixed work and
+residual alerts visible; and its evidence drawer and HEAT-SHIELD panel keep
+provenance and empirical evidence close to the result. Manager decisions and
+worker buttons deliberately reset with the browser and do not call an approval,
+notification, or wearable service.
 
 ### Path from prototype to pilot
 
@@ -1180,7 +1250,8 @@ true:
 - all six agent tools succeed in either documented agent mode;
 - custom scenario fields receive 422 and an invalid ID receives 404;
 - public responses contain no credentials; and
-- the safety limitations and fictional/real boundary remain explicit.
+- the safety limitations and fictional/real boundary remain explicit; and
+- the dashboard passes HS-24 through HS-28 at desktop and mobile widths.
 
 Certify the hosted LLM path separately with `--require-llm`. Do not fail the
 core analysis solely because free-tier LLM capacity triggered the documented
@@ -1223,10 +1294,7 @@ Suggested severity interpretation:
 
 ## 22. Current build record
 
-The latest completed backend and empirical claim-audit baseline before this
-documentation update was commit
-[`8ff2efb8a124daa874ca2948c8d88bccdc221c84`](https://github.com/SilentKnight742/heatshift-ai/commit/8ff2efb8a124daa874ca2948c8d88bccdc221c84).
-Documentation-only commits after it do not change backend behavior.
+The dashboard and API can be deployed more recently than a copied handbook.
 Before reporting a finding, record the current repository commit with:
 
 ```bash

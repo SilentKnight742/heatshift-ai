@@ -58,6 +58,13 @@ def fixtures() -> list[tuple[str, dict]]:
 def main() -> int:
     service = AnalysisService()
     client = FortyGuardClient()
+    output_path = ROOT / "data/evaluation_results.json"
+    existing_generated_at = None
+    if output_path.exists():
+        try:
+            existing_generated_at = json.loads(output_path.read_text()).get("generated_at")
+        except (json.JSONDecodeError, OSError):
+            pass
     site, crews, shift = service.load_demo_scenario()
     crew_by_id = {crew.crew_id: crew for crew in crews}
     rows = []
@@ -101,7 +108,7 @@ def main() -> int:
     optimized_total = sum(row["optimized_exposed_worker_minutes"] for row in rows)
     aggregate_reduction = round((baseline_total - optimized_total) / baseline_total * 100, 1)
     result = {
-        "generated_at": datetime.now().astimezone().isoformat(),
+        "generated_at": existing_generated_at or datetime.now().astimezone().isoformat(),
         "method": "Same fictional shift, crews, constraints, and policy across three real FortyGuard historical replays.",
         "screening_threshold": 50,
         "scenarios": rows,
@@ -114,7 +121,7 @@ def main() -> int:
             "agent_tools_succeeded": "6/6 in the demo analysis",
         },
     }
-    (ROOT / "data/evaluation_results.json").write_text(json.dumps(result, indent=2) + "\n")
+    output_path.write_text(json.dumps(result, indent=2) + "\n")
 
     lines = [
         "# Evaluation",
@@ -153,6 +160,21 @@ def main() -> int:
         "- A qualified safety professional and on-site WBGT measurement remain necessary for operational controls.",
         "",
         "Raw metrics and activity IDs are stored in `data/evaluation_results.json`.",
+        "",
+        "## Separate measured-outcome benchmark",
+        "",
+        "The operational replay above still combines real FortyGuard evidence with a",
+        "fictional shift. To test the policy against a real outcome, HeatShift separately",
+        "applies unchanged policy v1.0.0 to 566 controlled HEAT-SHIELD human-exposure",
+        "sessions from 32 pseudonymous participants.",
+        "",
+        "The fixed score has a descriptive Spearman rank correlation of 0.7718 with",
+        "measured one-hour physical work-capacity loss. Sessions below score 50 average",
+        "14.37% measured loss; sessions at or above 50 average 50.82%, a 36.45",
+        "percentage-point difference. The comparison is not fitted, causal, clinical, or",
+        "a Phoenix field study. Full provenance, index comparisons, reproduction steps,",
+        "and correct claim language are in the",
+        "[empirical benchmark](real-data-validation.md).",
     ]
     (ROOT / "docs/evaluation.md").parent.mkdir(parents=True, exist_ok=True)
     (ROOT / "docs/evaluation.md").write_text("\n".join(lines) + "\n")

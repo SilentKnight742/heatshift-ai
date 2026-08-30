@@ -6,6 +6,10 @@ HeatShift AI is a narrow industrial-safety vertical slice for HSE managers. It r
 
 Primary submission track: **Industrial & Enterprise**. Agentic tool execution is the technical differentiator; the official safety calculations never depend on an LLM.
 
+- **Live dashboard:** <https://heatshift-ai-zeta.vercel.app>
+- **Public API:** <https://heatshift-ai-api.vercel.app>
+- **Independent test handbook:** [docs/third-party-evaluator-guide.md](docs/third-party-evaluator-guide.md)
+
 ## Reproducible result
 
 Across three completed real FortyGuard historical replays, HeatShift reduced worker-minutes at or above the configured screening threshold by **78.0%** (**3,690 → 810**) while retaining **100%** of scheduled task time. See [the complete evaluation](docs/evaluation.md) and [raw results](data/evaluation_results.json).
@@ -29,7 +33,10 @@ The demo scenario contains one fictional operation, three fictional crews (12 wo
 - Six-tool orchestration trace with a free hosted Groq model in deployment, provider-configurable
   Responses access for local testing, and a deterministic fallback.
 - MapLibre map plus a GPU-independent real-GeoJSON renderer.
-- Before/after schedule, manager recommendations, evidence drawer, and interactive spectacles HUD.
+- Before/after schedule, constraint/result summary, simulated manager decision state,
+  recommendations, evidence drawer, and interactive spectacles HUD.
+- Public HEAT-SHIELD validation panel with measured metrics, source links, and
+  all limitations available in the dashboard.
 - Three-replay offline evaluation and automated backend/frontend checks.
 - Reproducible CC BY 4.0 human-trial benchmark with integrity hashes and public metrics API.
 
@@ -168,6 +175,9 @@ Run the smoke checklist in [demo-script.md](docs/demo-script.md) after both URLs
 The deployed backend is `https://heatshift-ai-api.vercel.app`; run
 `python3 scripts/smoke_public_api.py` for its complete public contract or follow
 the endpoint-by-endpoint [API testing guide](docs/api-testing.md).
+The deployed frontend is `https://heatshift-ai-zeta.vercel.app`; its manager
+decision and wearable controls are explicitly local simulation state and never
+transmit an operational decision or worker message.
 
 ## Safety limitation
 

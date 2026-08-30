@@ -2,6 +2,7 @@
 
 import dynamic from "next/dynamic";
 import { useCallback, useEffect, useRef, useState } from "react";
+import DecisionSummary from "@/components/DecisionSummary";
 import EvidenceDrawer from "@/components/EvidenceDrawer";
 import GlassesView from "@/components/GlassesView";
 import HeatshieldValidationPanel from "@/components/HeatshieldValidationPanel";
@@ -152,6 +153,8 @@ export default function Home() {
             </div>
 
             <RiskSummary metrics={analysis.metrics} />
+
+            <DecisionSummary analysis={analysis} />
 
             <section className="map-and-environment">
               <SiteMap heatmap={analysis.heatmap_geojson} site={analysis.site} tasks={analysis.tasks} schedule={analysis.optimized_schedule} />

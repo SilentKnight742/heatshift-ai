@@ -1,33 +1,108 @@
-# Submission description
+# HeatShift AI — submission-ready copy
 
-## HeatShift AI — operational heat decisions for industrial shifts
+This file contains the final written material only. It is not a submitted form,
+video, or external communication.
 
-Regional weather forecasts cannot reveal worksite-level heat variation, and a heatmap alone does not tell an HSE manager what to change. HeatShift AI turns hyperlocal temperature intelligence into a constraint-checked work plan before crews clock in.
+## Project title
 
-The primary users are HSE/EHS managers, site safety leads, operations managers,
-dispatchers, and crew supervisors in outdoor or semi-outdoor sectors such as
-construction, logistics, utilities, road maintenance, airports, agriculture,
-mining, and municipal services. Instead of asking them to interpret raw weather,
-HeatShift identifies higher-priority work, proposes only feasible schedule
-changes, preserves fixed work and dependencies, and keeps unresolved risk visible
-for human review and added controls.
+`HeatShift AI`
 
-The demo uses one fictional Phoenix logistics yard, three fictional crews (12 workers), and six tasks. HeatShift retrieves a real FortyGuard thermal field and hourly environmental parameters, calculates screening-level task risk, reschedules flexible heavy work, and formats explainable actions for a simulated smart-spectacles interface.
+## Primary and secondary tracks
 
-FortyGuard is central and visible. The primary replay contains 198 real 100 m heatmap cells and 11 hourly environmental observations. Every decision retains its heatmap activity ID, environmental activity ID, timestamp, live/cached state, parameters, and limitations. Saved responses come only from completed real activities; the product never silently generates weather.
+- Primary: **Track 3 — Industrial & Enterprise**
+- Secondary: **Track 6 — Agentic AI**
+- Secondary: **Track 7 — Data Analysis & Correlation**
 
-Safety calculations are deterministic and independent of the LLM. A versioned JSON policy combines returned apparent temperature with task workload, PPE burden, crew acclimatization, shade, and configured solar hours. The greedy optimizer evaluates 30-minute starts while preserving fixed tasks, shift bounds, dependencies, duration, and crew availability. An optional Responses-compatible agent executes six validated tools and exposes its trace; if the provider fails, the same tool workflow completes deterministically.
+## One-line pitch
 
-On the main replay, HeatShift moves heavy cargo loading from 1:00 PM to 6:30 AM and asphalt repair from noon to 7:30 AM. Worker-minutes at or above the configured screening threshold fall from 1,230 to 270. Across three completed real FortyGuard historical replays, aggregate exposure falls from 3,690 to 810—a **78.0% reduction**—while retaining **100% of scheduled task time**.
+> HeatShift turns hyperlocal heat and crew context into constraint-safe shift plans that reduce exposure while keeping work moving.
 
-Separately from that fictional operation, the unchanged policy is evaluated
-against 566 controlled HEAT-SHIELD human-exposure sessions from 32 pseudonymous
-participants. Its score has a 0.7718 Spearman rank correlation with measured
-one-hour physical work-capacity loss. Sessions at or above score 50 average
-50.82% measured loss versus 14.37% below it—a 36.45 percentage-point difference.
-This is descriptive empirical alignment, not fitting, clinical validation,
-illness prediction, or proof of injuries prevented.
+## Who this is for
 
-The frontend prototype includes the thermal map, hourly conditions, before/after timeline, manager controls, agent trace, evidence drawer, and interactive worker HUD. The deployed backend and its Swagger interface are the current public acceptance target; the next milestone is the polished judge-facing dashboard. Map rendering degrades to real-GeoJSON SVG when WebGL is unavailable; LLM or map failure never removes the deterministic schedule result.
+HeatShift is for HSE/EHS managers and operations planners at logistics yards,
+construction sites, utilities, ports, and other outdoor worksites. It changes
+the pre-shift decision from “How hot will it be?” to “Which flexible tasks
+should move, what must remain fixed, and what controls are still needed?”
 
-HeatShift provides screening-level decision support. It does not present FortyGuard values as measured on-site WBGT, make medical diagnoses, estimate injuries prevented, or replace a qualified safety professional and worksite measurement.
+## Where and when
+
+Phoenix, Arizona. The main replay covers 28 August 2026 from 06:00–16:00
+America/Phoenix, using real FortyGuard outputs with a fictional logistics-yard
+operation. Repeatability replays use 25, 27, and 28 August 2026. The separate
+HEAT-SHIELD benchmark is not part of the Phoenix operation.
+
+## How FortyGuard was used
+
+HeatShift uses FortyGuard’s heatmap and environmental-parameter workflows, then
+polls the activity-status endpoint. It retains source activity IDs and
+timestamps and displays 198 100-metre heatmap cells plus 11 hourly observations.
+Apparent temperature and supporting environmental evidence are combined with
+workload, PPE, acclimatization, shade, crews, dependencies, and scheduling
+constraints. The public demo replays saved outputs from completed real
+activities for reliability and zero credit consumption; live mode uses the same
+submit-and-poll pipeline.
+
+## AI disclosure
+
+A Groq-hosted Qwen model uses a Responses-compatible tool-calling workflow to
+orchestrate six validated operations and write manager and worker briefings.
+Official screening scores and schedule optimization remain deterministic,
+versioned, testable, and available through a fallback if the model is
+unavailable. OpenAI Codex was used for development assistance, product research,
+documentation, testing, and frontend iteration.
+
+## Project description — under 500 words
+
+Extreme heat is operationally difficult because forecasts and heatmaps describe
+environmental conditions but do not know what crews are doing, which workers are
+acclimatized, what PPE they wear, or which tasks can feasibly move. HSE managers
+still have to translate temperature into a workable shift manually.
+
+HeatShift AI is a pre-shift decision-support product for logistics yards,
+construction sites, utilities, ports, and other outdoor operations. It combines
+FortyGuard environmental evidence with a planned schedule, crew characteristics,
+workload, PPE burden, shade, acclimatization, dependencies, and operating
+constraints. A deterministic screening policy scores each task, while a
+constraint-aware optimizer searches 30-minute alternatives without changing
+duration, crew assignment, fixed work, allowed windows, or dependencies.
+Managers can inspect what moved, what remained fixed, and what residual risk
+still requires controls.
+
+The Phoenix demonstration uses a fictional logistics-yard operation with three
+crews, 12 workers, and six tasks, paired with outputs from completed real
+FortyGuard heatmap and environmental activities. HeatShift preserves provider
+activity IDs and timestamps and displays 198 100-metre heatmap cells and 11
+hourly observations. The public demo replays saved real provider outputs for
+reliability and zero credit consumption; the backend also supports the live API
+workflow.
+
+In the main replay, HeatShift moves two flexible heavy tasks into cooler legal
+windows. Worker-minutes at or above the product’s screening threshold fall from
+1,230 to 270—a 78% reduction—while 100% of scheduled task time is retained.
+Fixed work still produces two residual alerts, keeping unresolved risk visible
+rather than implying that it disappeared.
+
+Separately, the unchanged policy was evaluated against 566 measured
+HEAT-SHIELD sessions from 32 participants. Its score has a 0.7718 Spearman rank
+correlation with measured one-hour physical work-capacity loss. This supports
+prioritization value but is not clinical validation, illness prediction, or
+regulatory compliance.
+
+A tool-calling model orchestrates the workflow and creates briefings, while
+official scoring and optimization remain deterministic and auditable. HeatShift
+turns FortyGuard temperature intelligence into an operational decision—not
+another weather dashboard.
+
+## Optional disclosure field
+
+The Phoenix geography and FortyGuard outputs are real; the company, workers,
+and schedule are fictional. The HEAT-SHIELD benchmark is separate from the
+Phoenix replay. HeatShift provides screening-level decision support and does
+not claim medical prediction, injury prevention, regulatory compliance, or
+replacement of on-site WBGT measurement.
+
+## Public links
+
+- Dashboard: <https://heatshift-ai-zeta.vercel.app>
+- API and Swagger: <https://heatshift-ai-api.vercel.app/docs>
+- Repository: <https://github.com/SilentKnight742/heatshift-ai>

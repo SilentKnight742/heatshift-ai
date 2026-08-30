@@ -18,7 +18,7 @@ export default function GlassesView({ alerts }: Props) {
           <span className="eyebrow">Simulated endpoint</span>
           <h2>Smart-spectacles alert</h2>
         </div>
-        <span className="live-chip"><i /> HUD online</span>
+        <span className="live-chip"><i /> HUD simulation</span>
       </div>
       <div className="glasses-shell">
         <div className="glasses-scanline" />
@@ -46,7 +46,7 @@ export default function GlassesView({ alerts }: Props) {
             </div>
             <div className="hud-checks">
               <span>● Hydration check due</span>
-              <span>● Supervisor notified</span>
+              <span>● Supervisor action required</span>
             </div>
           </>
         ) : (
@@ -55,11 +55,10 @@ export default function GlassesView({ alerts }: Props) {
       </div>
       <div className="hud-controls">
         <button onClick={() => setStatus("Alert acknowledged")}>Acknowledge</button>
-        <button onClick={() => setStatus("Assistance requested")}>Request assistance</button>
-        <button className="danger" onClick={() => setStatus("Symptoms reported · supervisor escalation sent")}>Report symptoms</button>
+        <button onClick={() => setStatus("Assistance option selected")}>Request assistance</button>
+        <button className="danger" onClick={() => setStatus("Symptoms option selected · supervisor action required")}>Report symptoms</button>
       </div>
-      <p className="local-state"><span /> {status} · local demo state only</p>
+      <p className="local-state" aria-live="polite"><span /> {status} · local demo state only—nothing is transmitted</p>
     </section>
   );
 }
-
