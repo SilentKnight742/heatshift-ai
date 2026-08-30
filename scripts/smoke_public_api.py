@@ -140,18 +140,37 @@ def main() -> None:
     ] == 0.7718
     assert validation["metrics"]["mean_loss_difference_percentage_points"] == 36.45
 
-    status, cors_headers, _, timings["cors"] = request(
+    cors_elapsed = 0.0
+    for allowed_origin in (
+        "https://heatshift-ai-zeta.vercel.app",
+        "http://localhost:3000",
+    ):
+        status, cors_headers, _, elapsed = request(
+            base_url,
+            "OPTIONS",
+            "/api/demo",
+            headers={
+                "origin": allowed_origin,
+                "access-control-request-method": "POST",
+                "access-control-request-headers": "content-type",
+            },
+        )
+        cors_elapsed += elapsed
+        assert status == 200
+        assert cors_headers.get("access-control-allow-origin") == allowed_origin
+    status, denied_headers, _, elapsed = request(
         base_url,
         "OPTIONS",
         "/api/demo",
         headers={
-            "origin": "http://localhost:3000",
+            "origin": "https://example.com",
             "access-control-request-method": "POST",
-            "access-control-request-headers": "content-type",
         },
     )
-    assert status == 200
-    assert cors_headers.get("access-control-allow-origin") == "http://localhost:3000"
+    cors_elapsed += elapsed
+    assert status == 400
+    assert denied_headers.get("access-control-allow-origin") is None
+    timings["cors"] = round(cors_elapsed, 3)
 
     status, _, demo, timings["demo"] = json_request(base_url, "POST", "/api/demo")
     assert status == 200

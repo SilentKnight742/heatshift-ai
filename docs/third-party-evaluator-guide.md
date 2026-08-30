@@ -914,11 +914,15 @@ curl -i -X OPTIONS \
 Pass: HTTP 200 and
 `access-control-allow-origin: https://heatshift-ai-zeta.vercel.app`.
 
+Repeat with `Origin: http://localhost:3000`.
+
+Pass: HTTP 200 and `access-control-allow-origin: http://localhost:3000` so a
+local frontend can test the public API.
+
 Repeat with `Origin: https://example.com`.
 
-Pass: the response does not grant that origin. The production allowlist is
-deliberately narrowed to the deployed dashboard origin. Local development uses
-the local backend defaults instead of weakening the production allowlist.
+Pass: HTTP 400 and the response does not grant that origin. The deployment
+allows only the production dashboard and explicit local-development origins.
 
 **HS-21 — No credential leakage**
 

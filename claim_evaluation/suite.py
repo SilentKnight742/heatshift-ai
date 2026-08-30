@@ -1089,16 +1089,23 @@ def audit_public_api(
         return audit
 
     # CORS boundaries are tested in both directions.
-    status, headers, _, _ = _request_json(
-        f"{base_url}/api/demo",
-        method="OPTIONS",
-        headers={
-            "origin": "http://localhost:3000",
-            "access-control-request-method": "POST",
-            "access-control-request-headers": "content-type",
-        },
-    )
-    allowed = status == 200 and headers.get("access-control-allow-origin") == "http://localhost:3000"
+    allowed_results = []
+    for allowed_origin in (
+        "https://heatshift-ai-zeta.vercel.app",
+        "http://localhost:3000",
+    ):
+        status, headers, _, _ = _request_json(
+            f"{base_url}/api/demo",
+            method="OPTIONS",
+            headers={
+                "origin": allowed_origin,
+                "access-control-request-method": "POST",
+                "access-control-request-headers": "content-type",
+            },
+        )
+        allowed_results.append(
+            status == 200 and headers.get("access-control-allow-origin") == allowed_origin
+        )
     status_bad, bad_headers, _, _ = _request_json(
         f"{base_url}/api/demo",
         method="OPTIONS",
@@ -1107,13 +1114,16 @@ def audit_public_api(
             "access-control-request-method": "POST",
         },
     )
-    denied = bad_headers.get("access-control-allow-origin") != "https://example.com"
+    denied = (
+        status_bad == 400
+        and bad_headers.get("access-control-allow-origin") != "https://example.com"
+    )
     audit.record(
         "API-CORS",
         "security",
-        allowed and denied,
-        "The API grants the documented local origin and does not grant an arbitrary web origin.",
-        f"allowed_status={status}; untrusted_status={status_bad}; denied={denied}",
+        all(allowed_results) and denied,
+        "The API grants the documented production and local origins and rejects an arbitrary web origin.",
+        f"allowed={allowed_results}; untrusted_status={status_bad}; denied={denied}",
     )
 
     demos: list[Json] = []
