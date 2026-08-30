@@ -20,6 +20,8 @@ from .oracle import (
     assess_schedule,
     calculate_metrics,
     canonical_schedule_projection,
+    derive_heatshield_benchmark,
+    load_heatshield_trials,
     normalize_capture,
     normalize_tasks,
     optimize_greedy,
@@ -43,6 +45,26 @@ EXPECTED_TOOLS = [
 EXPECTED_NIOSH_LINKS = {
     "https://www.cdc.gov/niosh/heat-stress/recommendations/index.html",
     "https://www.cdc.gov/niosh/heat-stress/recommendations/acclimatization.html",
+}
+EXPECTED_HEATSHIELD_SUMMARY = {
+    "pearson_r": 0.7744,
+    "spearman_rho": 0.7718,
+    "below_records": 248,
+    "below_mean": 14.37,
+    "high_records": 318,
+    "high_mean": 50.82,
+    "mean_difference": 36.45,
+}
+EXPECTED_HEATSHIELD_BANDS = [
+    ("moderate", 248, 26, 48, 14.37, 11.52, 0.0, 23.18),
+    ("high", 201, 50, 73, 47.18, 44.2, 32.08, 67.05),
+    ("critical", 117, 79, 89, 57.07, 59.04, 43.72, 72.77),
+]
+EXPECTED_HEATSHIELD_INDICES = {
+    "apparent_temperature": {"pearson_r": 0.8425, "spearman_rho": 0.8688},
+    "heat_index": {"pearson_r": 0.8612, "spearman_rho": 0.8516},
+    "wbgt_outdoor": {"pearson_r": 0.8263, "spearman_rho": 0.8838},
+    "utci": {"pearson_r": 0.8583, "spearman_rho": 0.8732},
 }
 
 
@@ -190,6 +212,142 @@ def _derive_replay(
     }
 
 
+def _audit_heatshield_repository(
+    audit: ClaimAudit, root: Path, policy: Json
+) -> Json | None:
+    data_path = root / "data/validation/heatshield_trials.csv"
+    provenance_path = root / "data/validation/heatshield_provenance.json"
+    try:
+        provenance = _load_json(provenance_path)
+        rows = load_heatshield_trials(data_path)
+        benchmark = derive_heatshield_benchmark(rows, policy)
+    except (OSError, KeyError, TypeError, ValueError) as exc:
+        audit.record(
+            "HSHIELD-EVID",
+            "empirical_validation",
+            False,
+            "The HEAT-SHIELD slice is parseable, integrity-bound, and traceable.",
+            f"{type(exc).__name__}: {exc}",
+        )
+        return None
+
+    actual_sha = hashlib.sha256(data_path.read_bytes()).hexdigest()
+    derived = provenance.get("derived_slice", {})
+    dataset = provenance.get("dataset", {})
+    source_file = provenance.get("source_file", {})
+    evidence_ok = (
+        benchmark["records"] == derived.get("records") == 566
+        and benchmark["participants"]
+        == derived.get("pseudonymous_participants")
+        == 32
+        and benchmark["study_ids"] == derived.get("source_study_ids") == list(range(1, 7))
+        and actual_sha == derived.get("sha256")
+        == "f80db381ab856b5720a84f27090c9b7988ff17bf29998f800b73458b8f1113d9"
+        and dataset.get("doi") == "10.6084/m9.figshare.25722300.v1"
+        and dataset.get("license", {}).get("identifier") == "CC BY 4.0"
+        and source_file.get("md5") == "e36962603afbdbd6e9856936aacab62f"
+    )
+    audit.record(
+        "HSHIELD-EVID",
+        "empirical_validation",
+        evidence_ok,
+        "The HEAT-SHIELD slice is parseable, integrity-bound, licensed, and traceable.",
+        (
+            f"records={benchmark['records']}; participants={benchmark['participants']}; "
+            f"studies={benchmark['study_ids']}; sha256={actual_sha}; "
+            f"license={dataset.get('license', {}).get('identifier')}"
+        ),
+    )
+
+    metrics = benchmark["metrics"]
+    score = metrics["score_vs_measured_pwc_loss"]
+    below = metrics["below_high_risk_threshold"]
+    high = metrics["at_or_above_high_risk_threshold"]
+    summary = {
+        "pearson_r": score["pearson_r"],
+        "spearman_rho": score["spearman_rho"],
+        "below_records": below["records"],
+        "below_mean": below["mean_measured_pwc_loss_percent"],
+        "high_records": high["records"],
+        "high_mean": high["mean_measured_pwc_loss_percent"],
+        "mean_difference": metrics["mean_loss_difference_percentage_points"],
+    }
+    audit.record(
+        "HSHIELD-CALC",
+        "empirical_validation",
+        summary == EXPECTED_HEATSHIELD_SUMMARY,
+        "An independent oracle reproduces the published score correlation and threshold-group result.",
+        f"derived={_canonical(summary)}; published={_canonical(EXPECTED_HEATSHIELD_SUMMARY)}",
+    )
+
+    band_projection = [
+        (
+            row["band"],
+            row["records"],
+            row["score_minimum"],
+            row["score_maximum"],
+            row["mean_measured_pwc_loss_percent"],
+            row["median_measured_pwc_loss_percent"],
+            row["p25_measured_pwc_loss_percent"],
+            row["p75_measured_pwc_loss_percent"],
+        )
+        for row in metrics["bands"]
+    ]
+    audit.record(
+        "HSHIELD-BANDS",
+        "empirical_validation",
+        band_projection == EXPECTED_HEATSHIELD_BANDS
+        and sum(row[1] for row in band_projection) == 566,
+        "The moderate, high, and critical band summaries are independently reproducible and exhaustive.",
+        f"bands={_canonical(band_projection)}",
+    )
+
+    ranges = metrics["input_ranges"]
+    ranges_ok = (
+        ranges["air_temperature"] == {
+            "minimum": 14.311,
+            "maximum": 50.786,
+            "unit": "degC",
+        }
+        and ranges["measured_pwc_loss"] == {
+            "minimum": 0.0,
+            "maximum": 93.581,
+            "unit": "percent",
+        }
+    )
+    audit.record(
+        "HSHIELD-INDICES",
+        "empirical_validation",
+        metrics["comparative_index_correlations"] == EXPECTED_HEATSHIELD_INDICES
+        and ranges_ok,
+        "The comparative heat-index correlations and published input/outcome ranges are independently reproducible.",
+        (
+            f"indices={_canonical(metrics['comparative_index_correlations'])}; "
+            f"air_temperature={_canonical(ranges['air_temperature'])}; "
+            f"pwc_loss={_canonical(ranges['measured_pwc_loss'])}"
+        ),
+    )
+
+    limitations = "\n".join(provenance.get("limitations", [])).lower()
+    scope_ok = all(
+        phrase in limitations
+        for phrase in (
+            "controlled environmental-chamber",
+            "not heat illness",
+            "not statistically independent",
+            "does not fit or tune",
+        )
+    )
+    audit.record(
+        "HSHIELD-SCOPE",
+        "scope",
+        scope_ok,
+        "The empirical claim discloses controlled trials, repeated measures, an outcome boundary, and no policy fitting.",
+        f"required scope statements present={scope_ok}",
+    )
+    return benchmark
+
+
 def audit_repository(root: Path, verify_provider: bool = False) -> ClaimAudit:
     root = root.resolve()
     audit = ClaimAudit()
@@ -212,6 +370,7 @@ def audit_repository(root: Path, verify_provider: bool = False) -> ClaimAudit:
     shift = _load_json(root / "data/demo/shift.json")
     crews = _load_json(root / "data/demo/crews.json")
     policy = _load_json(root / "data/demo/policy_rules.json")
+    _audit_heatshield_repository(audit, root, policy)
     published = _load_json(root / "data/evaluation_results.json")
     published_by_date = {row["date"]: row for row in published["scenarios"]}
     derived_rows: list[Json] = []
@@ -730,12 +889,108 @@ def _deterministic_projection(result: Json) -> Json:
     }
 
 
+def audit_heatshield_response(
+    audit: ClaimAudit,
+    response: Json,
+    expected: Json,
+    policy: Json,
+    check_prefix: str = "API-VALIDATION",
+) -> None:
+    dataset = response.get("dataset", {})
+    evidence_ok = (
+        response.get("status") == "ready"
+        and response.get("benchmark_type") == "descriptive_empirical_alignment"
+        and dataset.get("records") == expected["records"] == 566
+        and dataset.get("pseudonymous_participants")
+        == expected["participants"]
+        == 32
+        and dataset.get("doi") == "10.6084/m9.figshare.25722300.v1"
+        and dataset.get("license", {}).get("identifier") == "CC BY 4.0"
+        and dataset.get("source_file_md5")
+        == "e36962603afbdbd6e9856936aacab62f"
+        and dataset.get("derived_csv_sha256")
+        == "f80db381ab856b5720a84f27090c9b7988ff17bf29998f800b73458b8f1113d9"
+    )
+    audit.record(
+        f"{check_prefix}-EVID",
+        "empirical_validation",
+        evidence_ok,
+        "The API identifies the exact licensed, integrity-bound 566-session HEAT-SHIELD slice.",
+        (
+            f"status={response.get('status')}; records={dataset.get('records')}; "
+            f"participants={dataset.get('pseudonymous_participants')}; "
+            f"license={dataset.get('license', {}).get('identifier')}"
+        ),
+    )
+
+    profile = response.get("benchmark_profile", {})
+    profile_ok = (
+        profile.get("name") == "standardized-heavy-work"
+        and profile.get("policy_version") == policy["version"]
+        and profile.get("workload") == "heavy"
+        and profile.get("workload_points")
+        == policy["workload_adjustments"]["heavy"]
+        and profile.get("acclimatization") == "acclimatized"
+        and profile.get("acclimatization_points")
+        == policy["acclimatization_adjustments"]["acclimatized"]
+        and profile.get("high_risk_threshold") == policy["high_risk_threshold"]
+        and profile.get("fitted_to_dataset") is False
+    )
+    audit.record(
+        f"{check_prefix}-PROFILE",
+        "empirical_validation",
+        profile_ok,
+        "The API exposes the fixed policy assumptions and explicitly reports that they were not fitted to the outcome.",
+        f"profile={_canonical(profile)}",
+    )
+
+    actual_metrics = response.get("metrics")
+    audit.record(
+        f"{check_prefix}-METRICS",
+        "empirical_validation",
+        actual_metrics == expected["metrics"],
+        "Every public HEAT-SHIELD metric matches the independent standard-library oracle.",
+        (
+            f"expected_sha256={hashlib.sha256(_canonical(expected['metrics']).encode()).hexdigest()}; "
+            f"actual_sha256={hashlib.sha256(_canonical(actual_metrics).encode()).hexdigest()}"
+        ),
+    )
+
+    limitations = "\n".join(response.get("limitations", [])).lower()
+    interpretation = str(response.get("interpretation", "")).lower()
+    scope_ok = (
+        len(response.get("citations", [])) >= 5
+        and all(
+            phrase in limitations
+            for phrase in (
+                "controlled environmental-chamber",
+                "not heat illness",
+                "not statistically independent",
+                "does not fit or tune",
+            )
+        )
+        and "descriptive external evidence" in interpretation
+        and "not a fitted model or causal validation" in interpretation
+    )
+    audit.record(
+        f"{check_prefix}-SCOPE",
+        "scope",
+        scope_ok,
+        "The API preserves the measured-outcome, repeated-measures, non-fitted, and non-causal boundaries.",
+        f"scope statements present={scope_ok}; citations={len(response.get('citations', []))}",
+    )
+
+
 def audit_public_api(
     root: Path, base_url: str, repetitions: int = 3
 ) -> ClaimAudit:
     audit = ClaimAudit()
     base_url = base_url.rstrip("/")
     policy = _load_json(root / "data/demo/policy_rules.json")
+    heatshield_expected = derive_heatshield_benchmark(
+        load_heatshield_trials(root / "data/validation/heatshield_trials.csv"),
+        policy,
+    )
     responses_for_secret_scan: list[Any] = []
     try:
         status, _, root_body, root_time = _request_json(f"{base_url}/")
@@ -775,6 +1030,7 @@ def audit_public_api(
             "/api/analyses",
             "/api/analyses/{analysis_id}",
             "/api/analyses/{analysis_id}/agent",
+            "/api/validation/heatshield",
         }
         audit.record(
             "API-SCHEMA",
@@ -803,6 +1059,25 @@ def audit_public_api(
             "The public scenario matches the disclosed fictional 3-crew, 12-worker, 6-task slice.",
             f"HTTP {status} in {scenario_time:.3f}s",
         )
+        status, _, validation, validation_time = _request_json(
+            f"{base_url}/api/validation/heatshield"
+        )
+        responses_for_secret_scan.append(validation)
+        if status != 200 or not isinstance(validation, dict):
+            audit.record(
+                "API-VALIDATION-EVID",
+                "empirical_validation",
+                False,
+                "The public empirical-validation endpoint returns JSON with HTTP 200.",
+                f"HTTP {status} in {validation_time:.3f}s",
+            )
+        else:
+            audit_heatshield_response(
+                audit,
+                validation,
+                heatshield_expected,
+                policy,
+            )
     except (OSError, ValueError, AttributeError, KeyError) as exc:
         audit.record(
             "API-BOOT",

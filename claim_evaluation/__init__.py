@@ -8,6 +8,8 @@ rules, suitable for differential and black-box checks.
 from .oracle import (
     assess_schedule,
     calculate_metrics,
+    derive_heatshield_benchmark,
+    load_heatshield_trials,
     normalize_capture,
     optimize_greedy,
     score_segment,
@@ -17,6 +19,8 @@ from .oracle import (
 __all__ = [
     "assess_schedule",
     "calculate_metrics",
+    "derive_heatshield_benchmark",
+    "load_heatshield_trials",
     "normalize_capture",
     "optimize_greedy",
     "score_segment",

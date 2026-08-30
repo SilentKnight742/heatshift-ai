@@ -22,7 +22,7 @@ from claim_evaluation.suite import (  # noqa: E402
 def main() -> int:
     parser = argparse.ArgumentParser(
         description=(
-            "Independently recompute HeatShift's evidence, score, schedule, and metric claims."
+            "Independently recompute HeatShift's operational and HEAT-SHIELD empirical claims."
         )
     )
     parser.add_argument(

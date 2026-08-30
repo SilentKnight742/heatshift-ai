@@ -8,14 +8,283 @@ same public inputs and policy, then derives the expected result separately.
 from __future__ import annotations
 
 import copy
+import csv
 import math
 import statistics
 import uuid
 from datetime import date, datetime, timedelta
+from pathlib import Path
 from typing import Any, Iterable
 
 
 Json = dict[str, Any]
+
+HEATSHIELD_FLOAT_FIELDS = (
+    "air_temperature_c",
+    "relative_humidity_percent",
+    "air_speed_mps",
+    "apparent_temperature_c",
+    "heat_index_c",
+    "wbgt_outdoor_c",
+    "utci_c",
+    "measured_pwc_loss_percent",
+)
+
+
+def load_heatshield_trials(path: Path) -> list[Json]:
+    """Load the public derived trial slice without production model imports."""
+
+    required = {
+        "study_id",
+        "participant_id",
+        "solar_exposure",
+        "high_clothing_coverage",
+        *HEATSHIELD_FLOAT_FIELDS,
+    }
+    rows: list[Json] = []
+    with path.open(encoding="utf-8", newline="") as stream:
+        reader = csv.DictReader(stream)
+        missing = required - set(reader.fieldnames or [])
+        if missing:
+            raise ValueError(f"HEAT-SHIELD CSV lacks fields: {sorted(missing)}")
+        for line_number, source in enumerate(reader, start=2):
+            try:
+                row: Json = {
+                    "study_id": int(source["study_id"]),
+                    "participant_id": source["participant_id"],
+                }
+                for field in HEATSHIELD_FLOAT_FIELDS:
+                    row[field] = float(source[field])
+                for field in ("solar_exposure", "high_clothing_coverage"):
+                    if source[field] not in {"true", "false"}:
+                        raise ValueError(f"{field} is not true/false")
+                    row[field] = source[field] == "true"
+            except (TypeError, ValueError) as exc:
+                raise ValueError(
+                    f"invalid HEAT-SHIELD CSV row {line_number}: {exc}"
+                ) from exc
+            if not row["participant_id"]:
+                raise ValueError(
+                    f"invalid HEAT-SHIELD CSV row {line_number}: blank participant"
+                )
+            if not all(math.isfinite(row[field]) for field in HEATSHIELD_FLOAT_FIELDS):
+                raise ValueError(
+                    f"invalid HEAT-SHIELD CSV row {line_number}: non-finite value"
+                )
+            rows.append(row)
+    return rows
+
+
+def _pearson(left: list[float], right: list[float]) -> float:
+    if len(left) != len(right) or len(left) < 2:
+        raise ValueError("correlation samples must have equal non-trivial lengths")
+    left_mean = statistics.fmean(left)
+    right_mean = statistics.fmean(right)
+    numerator = sum(
+        (left_value - left_mean) * (right_value - right_mean)
+        for left_value, right_value in zip(left, right, strict=True)
+    )
+    denominator = math.sqrt(
+        sum((value - left_mean) ** 2 for value in left)
+        * sum((value - right_mean) ** 2 for value in right)
+    )
+    if denominator == 0:
+        raise ValueError("correlation is undefined for a constant sample")
+    return numerator / denominator
+
+
+def _average_ranks(values: list[float]) -> list[float]:
+    ordered = sorted(enumerate(values), key=lambda item: item[1])
+    ranks = [0.0] * len(values)
+    start = 0
+    while start < len(ordered):
+        end = start + 1
+        while end < len(ordered) and ordered[end][1] == ordered[start][1]:
+            end += 1
+        average = ((start + 1) + end) / 2
+        for position in range(start, end):
+            ranks[ordered[position][0]] = average
+        start = end
+    return ranks
+
+
+def _correlation(left: list[float], right: list[float]) -> Json:
+    return {
+        "pearson_r": round(_pearson(left, right), 4),
+        "spearman_rho": round(
+            _pearson(_average_ranks(left), _average_ranks(right)), 4
+        ),
+    }
+
+
+def _quantile(values: list[float], probability: float) -> float:
+    ordered = sorted(values)
+    position = (len(ordered) - 1) * probability
+    lower = math.floor(position)
+    upper = math.ceil(position)
+    if lower == upper:
+        return ordered[lower]
+    return ordered[lower] + (ordered[upper] - ordered[lower]) * (position - lower)
+
+
+def _validation_environmental_points(apparent: float, policy: Json) -> int:
+    for band in policy["environmental_apparent_temperature_bands_c"]:
+        if band["max"] is None or apparent <= float(band["max"]):
+            return int(band["points"])
+    raise ValueError("policy lacks an open-ended environmental band")
+
+
+def _validation_band(score: int, policy: Json) -> str:
+    for band in policy["risk_bands"]:
+        if score <= int(band["max"]):
+            return str(band["name"])
+    raise ValueError("policy lacks a band for the validation score")
+
+
+def _validation_range(rows: list[Json], field: str, unit: str) -> Json:
+    values = [float(row[field]) for row in rows]
+    return {
+        "minimum": round(min(values), 3),
+        "maximum": round(max(values), 3),
+        "unit": unit,
+    }
+
+
+def derive_heatshield_benchmark(rows: list[Json], policy: Json) -> Json:
+    """Independently derive every metric exposed by the validation endpoint."""
+
+    if not rows:
+        raise ValueError("HEAT-SHIELD benchmark has no records")
+    workload_points = int(policy["workload_adjustments"]["heavy"])
+    acclimatization_points = int(
+        policy["acclimatization_adjustments"]["acclimatized"]
+    )
+    scores: list[float] = []
+    environmental_scores: list[float] = []
+    losses: list[float] = []
+    by_band: dict[str, list[tuple[int, float]]] = {}
+    for row in rows:
+        environmental = _validation_environmental_points(
+            float(row["apparent_temperature_c"]), policy
+        )
+        ppe = (
+            int(policy["ppe_adjustments"]["high"])
+            if row["high_clothing_coverage"]
+            else int(policy["ppe_adjustments"]["low"])
+        )
+        solar = (
+            int(policy["direct_solar_adjustment"])
+            if row["solar_exposure"]
+            else 0
+        )
+        score = max(
+            0,
+            min(
+                100,
+                environmental
+                + workload_points
+                + acclimatization_points
+                + ppe
+                + solar,
+            ),
+        )
+        loss = float(row["measured_pwc_loss_percent"])
+        scores.append(float(score))
+        environmental_scores.append(float(environmental))
+        losses.append(loss)
+        by_band.setdefault(_validation_band(score, policy), []).append((score, loss))
+
+    threshold = int(policy["high_risk_threshold"])
+    below = [loss for score, loss in zip(scores, losses, strict=True) if score < threshold]
+    high = [loss for score, loss in zip(scores, losses, strict=True) if score >= threshold]
+    bands = []
+    for configured in policy["risk_bands"]:
+        name = str(configured["name"])
+        records = by_band.get(name, [])
+        if not records:
+            continue
+        band_scores = [score for score, _ in records]
+        band_losses = [loss for _, loss in records]
+        bands.append(
+            {
+                "band": name,
+                "records": len(records),
+                "score_minimum": min(band_scores),
+                "score_maximum": max(band_scores),
+                "mean_measured_pwc_loss_percent": round(
+                    statistics.fmean(band_losses), 2
+                ),
+                "median_measured_pwc_loss_percent": round(
+                    statistics.median(band_losses), 2
+                ),
+                "p25_measured_pwc_loss_percent": round(
+                    _quantile(band_losses, 0.25), 2
+                ),
+                "p75_measured_pwc_loss_percent": round(
+                    _quantile(band_losses, 0.75), 2
+                ),
+            }
+        )
+
+    below_mean = statistics.fmean(below)
+    high_mean = statistics.fmean(high)
+    return {
+        "records": len(rows),
+        "participants": len({row["participant_id"] for row in rows}),
+        "study_ids": sorted({int(row["study_id"]) for row in rows}),
+        "metrics": {
+            "outcome": "Measured one-hour physical work capacity loss (%)",
+            "score_vs_measured_pwc_loss": _correlation(scores, losses),
+            "environmental_points_vs_measured_pwc_loss": _correlation(
+                environmental_scores, losses
+            ),
+            "comparative_index_correlations": {
+                "apparent_temperature": _correlation(
+                    [float(row["apparent_temperature_c"]) for row in rows], losses
+                ),
+                "heat_index": _correlation(
+                    [float(row["heat_index_c"]) for row in rows], losses
+                ),
+                "wbgt_outdoor": _correlation(
+                    [float(row["wbgt_outdoor_c"]) for row in rows], losses
+                ),
+                "utci": _correlation(
+                    [float(row["utci_c"]) for row in rows], losses
+                ),
+            },
+            "below_high_risk_threshold": {
+                "records": len(below),
+                "mean_measured_pwc_loss_percent": round(below_mean, 2),
+            },
+            "at_or_above_high_risk_threshold": {
+                "records": len(high),
+                "mean_measured_pwc_loss_percent": round(high_mean, 2),
+            },
+            "mean_loss_difference_percentage_points": round(
+                high_mean - below_mean, 2
+            ),
+            "bands": bands,
+            "input_ranges": {
+                "air_temperature": _validation_range(
+                    rows, "air_temperature_c", "degC"
+                ),
+                "relative_humidity": _validation_range(
+                    rows, "relative_humidity_percent", "percent"
+                ),
+                "air_speed": _validation_range(rows, "air_speed_mps", "m/s"),
+                "apparent_temperature": _validation_range(
+                    rows, "apparent_temperature_c", "degC"
+                ),
+                "wbgt_outdoor": _validation_range(
+                    rows, "wbgt_outdoor_c", "degC"
+                ),
+                "utci": _validation_range(rows, "utci_c", "degC"),
+                "measured_pwc_loss": _validation_range(
+                    rows, "measured_pwc_loss_percent", "percent"
+                ),
+            },
+        },
+    }
 
 
 def parse_datetime(value: str | datetime) -> datetime:

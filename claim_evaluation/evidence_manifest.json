@@ -8,6 +8,8 @@
     "data/demo/crews.json": "2f7d799fbb61c4a8ffff8a348a8a9f19b3609ced5c37db6b559577c68caccefe",
     "data/demo/policy_rules.json": "0c43d6bbfcc7accbc6133cd3f16c61679ad934af3a74a8c9b86aa713b379fcee",
     "data/demo/shift.json": "ebeb2f25c034e03726f64447193f0fbd5902048437a30c9e8edb52715848dc4b",
-    "data/demo/site.geojson": "05d1994ed5189f731c7aaa95032b0d1b876a6c4d3b7bfe447cf4cfa15b998437"
+    "data/demo/site.geojson": "05d1994ed5189f731c7aaa95032b0d1b876a6c4d3b7bfe447cf4cfa15b998437",
+    "data/validation/heatshield_provenance.json": "93856d20aa53291f7919dea5d8e2000379916923edcfc1f6c429b016dbfae456",
+    "data/validation/heatshield_trials.csv": "f80db381ab856b5720a84f27090c9b7988ff17bf29998f800b73458b8f1113d9"
   }
 }

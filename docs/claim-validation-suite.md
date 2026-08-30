@@ -8,7 +8,7 @@ This suite is designed to answer a narrower and more defensible question than
 > assertions—and clearly identify what still needs outside evidence?
 
 The answer for the current build is **yes for the published calculations and
-public behavior, with two material caveats**:
+public behavior, with three material caveats**:
 
 1. Checked-in JSON cannot authenticate its own claim that it came from
    FortyGuard. The six activity results need read-only provider revalidation (or
@@ -17,6 +17,10 @@ public behavior, with two material caveats**:
    checked against those metrics. A model can return contradictory narrative
    after valid tool calls. This is recorded as an expected-failure adversarial
    test; evaluators must treat the structured result as authoritative.
+3. The HEAT-SHIELD result is a descriptive comparison with repeated controlled
+   trials and measured work-capacity loss. It is not a fitted model, independent
+   participant-level validation set, field study, heat-illness endpoint, or
+   causal safety-effect estimate.
 
 ## Why this suite is independent
 
@@ -29,6 +33,9 @@ new oracle in [`claim_evaluation/oracle.py`](../claim_evaluation/oracle.py):
 - parses the raw saved responses and product policy directly;
 - independently normalizes observations, scores every 30-minute segment,
   enumerates documented candidate starts, and recomputes all metrics; and
+- independently parses the 566-row HEAT-SHIELD CSV and recomputes its policy
+  mapping, Pearson and tied-rank Spearman correlations, threshold groups,
+  quantiles, band summaries, input ranges, and index comparisons; and
 - compares only externally observable fields, not production internals.
 
 SHA-256 pins in
@@ -41,12 +48,13 @@ payloads share the same repository trust boundary.
 
 | Layer | What it checks | Failure meaning |
 |---|---|---|
-| A. Evidence structure | Completed status, UUIDs, 198 unique closed heatmap polygons, cell-derived min/max/mean/sample deviation, 11 unique hourly observations, finite apparent temperatures, same-day request chaining | Cached inputs are malformed, inconsistent, duplicated, or changed |
+| A. Evidence structure | Completed status, UUIDs, 198 unique closed heatmap polygons, cell-derived min/max/mean/sample deviation, 11 unique hourly observations, finite apparent temperatures, same-day request chaining, and 10 pinned inputs | Cached inputs are malformed, inconsistent, duplicated, or changed |
 | B. Independent calculation | Policy boundaries, peak/average scores, factor points, bands, thresholded worker-minutes, movements, disruption, productivity, and 3-replay aggregate | A published number cannot be derived from the disclosed rules |
 | C. Constraint proof | Task identity, crew, workload, duration, earliest/latest windows, fixed work, dependencies, and same-crew overlap | The result improves its metric by violating the work plan |
 | D. Differential/adversarial | 300 seeded random policy combinations, exact boundary values, missing data, deliberate metric/schedule tampering, agent error paths | Production and independent semantics diverge, or the evaluator fails to catch mutations |
 | E. Public black box | Contract/schema, CORS allow/deny, complete results, three-call normalized determinism, jobs, cold replay, negative inputs, trace binding, residual alerts, sampled secret scanning | Deployment does not match source-level claims |
 | F. External provenance | Read-only provider retrieval of all six activity IDs and deep comparison of `data.result` | Saved evidence is not authenticated by the named source |
+| G. Empirical benchmark | HEAT-SHIELD DOI/license/checksums, 566 records, 32 participants, studies 1–6, fixed policy mapping, correlations, threshold groups, bands, ranges, public API equality, scope language, and deliberate mutations | A published empirical metric, assumption, provenance field, or limitation is wrong or silently changes |
 
 ## Claim-to-test matrix
 
@@ -64,6 +72,12 @@ payloads share the same repository trust boundary.
 | Residual risk is not hidden | `REMOTE-*-RESIDUAL` | Passes: inventory scanning and perimeter inspection remain above threshold and produce alerts. |
 | No credentials in public responses | `API-SECRETS` | No high-confidence token patterns were found in sampled discovery, schema, scenario, analysis, job, error, and agent responses. This is not a formal proof over every possible error path. |
 | Zero-cost/Vercel Hobby billing | none inside the application | Requires account/billing evidence from Vercel. A self-reported health field is not independent proof. |
+| 566 HEAT-SHIELD sessions / 32 participants | `HSHIELD-EVID`, `API-VALIDATION-EVID` | Passes CSV parsing, studies 1–6 selection, counts, DOI, CC BY 4.0 license, source MD5, and derived SHA-256 checks. |
+| Score correlation of 0.7744 Pearson / 0.7718 Spearman | `HSHIELD-CALC`, `API-VALIDATION-METRICS` | Independently reproduced using measured one-hour PWC loss. This is association across repeated sessions, not out-of-sample predictive accuracy. |
+| 14.37% vs 50.82% mean PWC loss around score 50 | `HSHIELD-CALC` | Passes: 248 sessions below 50 and 318 at/above 50 differ by 36.45 percentage points. This is a descriptive split at a product-defined threshold. |
+| Moderate/high/critical empirical summaries | `HSHIELD-BANDS` | All 566 records are accounted for and means, medians, quartiles, and observed score ranges reproduce. No low-band record occurs under the fixed heavy-work profile. |
+| Comparative AT/Heat Index/WBGT/UTCI correlations | `HSHIELD-INDICES` | Passes. The public result transparently shows that continuous research indices correlate at least as strongly as the coarse HeatShift score. |
+| No fitting, illness, or causal claim | `HSHIELD-SCOPE`, `API-VALIDATION-PROFILE`, `API-VALIDATION-SCOPE` | Passes both repository and deployed-response checks; adversarial tests fail a response that changes the fitting flag or removes limitations. |
 
 ## Running the suite
 
@@ -105,18 +119,26 @@ sensitivity without treating a disclosed product choice as a defect.
 
 ## Current observed result
 
-On August 30, 2026, the suite observed:
+On August 30, 2026, after adding the empirical benchmark, the suite observed:
 
-- 48 ordinary/adversarial tests passing plus one expected failure for unchecked
+- 50 ordinary/adversarial tests passing plus one expected failure for unchecked
   LLM narrative contradiction;
-- 21 offline claim checks passing, zero failing, one external-provenance check
+- 26 offline claim checks passing, zero failing, one external-provenance check
   unverified, and one sensitivity observation;
-- 58 combined offline/public checks passing and zero failing across three
+- 67 combined offline/public checks passing and zero failing across three
   deployed analysis repetitions;
 - one live `llm_tool_calling` result and two
   `deterministic_fallback` results, all with identical deterministic
   fingerprints; and
-- complete-analysis times of 3.632 s, 2.102 s, and 0.529 s in the final run.
+- complete-analysis times of 5.792 s, 0.368 s, and 0.382 s in the final run.
+
+The HEAT-SHIELD source workbook is not committed because the reproducible
+derived slice is smaller and deployment-ready. The preparation script downloads
+the public Figshare file, verifies its published MD5, selects studies 1–6, and
+must reproduce the pinned CSV SHA-256. The independent oracle deliberately starts
+from that derived CSV; therefore its metric agreement does not by itself prove
+that every selected cell was transcribed from the workbook. The separate
+byte-for-byte rebuild check covers that transformation boundary.
 
 The official NIOSH references used by the project are directionally appropriate:
 current guidance supports schedule/task controls, cool recovery, potable water,
@@ -165,3 +187,6 @@ For a higher assurance level:
 5. Archive the JSON report, commit SHA, OpenAPI schema, CI run, provider
    attestation, and deployment/billing screenshots as one evaluator evidence
    bundle.
+6. Validate the score prospectively on independent field data with on-site
+   measurements and operational outcomes before making any general safety
+   effectiveness claim.

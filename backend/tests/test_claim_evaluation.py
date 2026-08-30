@@ -17,8 +17,18 @@ from app.models.task import Task
 from app.models.weather import EnvironmentalObservation
 from app.services.analysis_service import AnalysisService
 from app.services.risk_engine import RiskEngine
-from claim_evaluation.oracle import score_segment
-from claim_evaluation.suite import ClaimAudit, audit_analysis_result, audit_repository
+from app.services.validation_service import heatshield_validation
+from claim_evaluation.oracle import (
+    derive_heatshield_benchmark,
+    load_heatshield_trials,
+    score_segment,
+)
+from claim_evaluation.suite import (
+    ClaimAudit,
+    audit_analysis_result,
+    audit_heatshield_response,
+    audit_repository,
+)
 
 
 ROOT = Path(__file__).resolve().parents[2]
@@ -53,6 +63,54 @@ def test_repository_claims_pass_independent_offline_audit() -> None:
         check["check_id"] == "CALC-AGG" and check["status"] == "PASS"
         for check in report["checks"]
     )
+    assert all(
+        any(
+            check["check_id"] == check_id and check["status"] == "PASS"
+            for check in report["checks"]
+        )
+        for check_id in (
+            "HSHIELD-EVID",
+            "HSHIELD-CALC",
+            "HSHIELD-BANDS",
+            "HSHIELD-INDICES",
+            "HSHIELD-SCOPE",
+        )
+    )
+
+
+def test_heatshield_claims_match_independent_oracle() -> None:
+    rows = load_heatshield_trials(ROOT / "data/validation/heatshield_trials.csv")
+    result = derive_heatshield_benchmark(rows, POLICY)
+
+    assert result["records"] == 566
+    assert result["participants"] == 32
+    assert result["study_ids"] == [1, 2, 3, 4, 5, 6]
+    assert result["metrics"]["score_vs_measured_pwc_loss"] == {
+        "pearson_r": 0.7744,
+        "spearman_rho": 0.7718,
+    }
+    assert result["metrics"]["mean_loss_difference_percentage_points"] == 36.45
+    assert sum(row["records"] for row in result["metrics"]["bands"]) == 566
+
+
+def test_heatshield_evaluator_detects_metric_profile_and_scope_tampering() -> None:
+    expected = derive_heatshield_benchmark(
+        load_heatshield_trials(ROOT / "data/validation/heatshield_trials.csv"),
+        POLICY,
+    )
+    response = heatshield_validation().model_dump(mode="json")
+    response["metrics"]["score_vs_measured_pwc_loss"]["spearman_rho"] = 0.9999
+    response["benchmark_profile"]["fitted_to_dataset"] = True
+    response["limitations"] = []
+
+    audit = ClaimAudit()
+    audit_heatshield_response(audit, response, expected, POLICY, "MUTANT-HS")
+    failures = {check.check_id for check in audit.failed}
+    assert failures == {
+        "MUTANT-HS-PROFILE",
+        "MUTANT-HS-METRICS",
+        "MUTANT-HS-SCOPE",
+    }
 
 
 def test_optional_provider_authentication_compares_all_six_results(
