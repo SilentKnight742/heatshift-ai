@@ -43,6 +43,15 @@ Open the evidence drawer.
 
 “The agent runs six validated tools: retrieve evidence, load the shift, calculate risk, optimize, retrieve NIOSH guidance, and create alerts. If the model provider fails, the deterministic tool workflow still completes. Here is the full trace, source IDs, risk factors, and limitations.”
 
+If showing the empirical proof-of-concept, open
+`GET /api/validation/heatshield` in Swagger:
+
+“Separately from the fictional operation, we apply this unchanged policy to 566
+measured HEAT-SHIELD human-exposure sessions. The score's rank correlation with
+measured one-hour work-capacity loss is 0.7718, and sessions at or above the
+screening threshold average 36.45 percentage points more loss. This is
+descriptive external evidence—not clinical or field-site validation.”
+
 ## 2:25–2:45 · Spectacles
 
 Show the HUD and click **Acknowledge**.
@@ -52,4 +61,3 @@ Show the HUD and click **Acknowledge**.
 ## 2:45–3:00 · Close
 
 “HeatShift is screening support. It does not replace an on-site WBGT meter, emergency procedures, or a qualified safety professional. The next step is integration with real shift systems, field measurements, and supervisor workflows.”
-

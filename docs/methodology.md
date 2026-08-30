@@ -43,6 +43,20 @@ Workload adds 0 / 8 / 18 / 25 points for light / moderate / heavy / very heavy w
 
 These are product screening bands—not medical diagnoses, WBGT-based work/rest limits, or regulatory exposure limits.
 
+## Empirical alignment check
+
+Policy v1.0.0 is also applied, without fitting, to a 566-session slice of the
+public HEAT-SHIELD controlled human-exposure dataset. A fixed heavy-work,
+acclimatized profile is used; source coverall and solar conditions map to the
+existing PPE and solar adjustments. The comparison uses measured one-hour
+physical work-capacity loss as its outcome.
+
+This produces a descriptive score-to-outcome Spearman correlation of 0.7718 and
+a 36.45 percentage-point difference in mean measured loss between sessions below
+and at/above score 50. Records include repeated trials by participants, so no
+inferential p-value or causal claim is reported. See the complete
+[empirical benchmark](real-data-validation.md).
+
 ## Exposure metric
 
 For every task segment whose score is at least 50:
@@ -66,4 +80,3 @@ The duration and crew stay unchanged; fixed tasks never move. Productivity retai
 ## Human control
 
 The optimizer is a prioritization aid. Fixed high-risk work remains visible and generates an escalation recommendation. A qualified safety lead must use on-site measurement, company procedures, emergency planning, and applicable requirements to choose actual controls.
-

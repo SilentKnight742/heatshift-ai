@@ -6,6 +6,7 @@ from fastapi.middleware.cors import CORSMiddleware
 from .config import settings
 from .routes.analyses import router as analyses_router
 from .routes.health import router as health_router
+from .routes.validation import router as validation_router
 
 
 app = FastAPI(
@@ -22,6 +23,7 @@ app.add_middleware(
 )
 app.include_router(health_router)
 app.include_router(analyses_router)
+app.include_router(validation_router)
 
 
 @app.get("/")
@@ -31,5 +33,5 @@ async def root() -> dict:
         "docs": "/docs",
         "health": "/health",
         "demo": "POST /api/demo",
+        "empirical_validation": "/api/validation/heatshield",
     }
-

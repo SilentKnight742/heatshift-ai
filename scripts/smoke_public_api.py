@@ -100,6 +100,8 @@ def main() -> None:
     assert health["fortyguard"]["cached_real_response_available"] is True
     assert health["llm"]["configured"] is True
     assert health["deployment"]["stateless_replay_recovery"] is True
+    assert health["empirical_validation"]["available"] is True
+    assert health["empirical_validation"]["requires_external_api"] is False
 
     status, _, schema, timings["openapi"] = json_request(base_url, "GET", "/openapi.json")
     assert status == 200
@@ -110,6 +112,7 @@ def main() -> None:
         "/api/analyses",
         "/api/analyses/{analysis_id}",
         "/api/analyses/{analysis_id}/agent",
+        "/api/validation/heatshield",
     }
     assert expected_paths.issubset(schema["paths"])
 
@@ -122,6 +125,20 @@ def main() -> None:
     assert status == 200 and scenario["fictional_operation"] is True
     assert len(scenario["crews"]) == 3
     assert len(scenario["shift"]["tasks"]) == 6
+
+    status, _, validation, timings["validation"] = json_request(
+        base_url, "GET", "/api/validation/heatshield"
+    )
+    assert status == 200 and validation["status"] == "ready"
+    assert validation["benchmark_type"] == "descriptive_empirical_alignment"
+    assert validation["dataset"]["records"] == 566
+    assert validation["dataset"]["pseudonymous_participants"] == 32
+    assert validation["dataset"]["license"]["identifier"] == "CC BY 4.0"
+    assert validation["benchmark_profile"]["fitted_to_dataset"] is False
+    assert validation["metrics"]["score_vs_measured_pwc_loss"][
+        "spearman_rho"
+    ] == 0.7718
+    assert validation["metrics"]["mean_loss_difference_percentage_points"] == 36.45
 
     status, cors_headers, _, timings["cors"] = request(
         base_url,
@@ -180,7 +197,7 @@ def main() -> None:
     assert status == 404
 
     public_payload = json.dumps(
-        [root, health, scenario, demo, job, fetched, cold_replay, rerun]
+        [root, health, scenario, validation, demo, job, fetched, cold_replay, rerun]
     )
     assert "gsk_" not in public_payload
     assert "Bearer " not in public_payload
@@ -193,7 +210,7 @@ def main() -> None:
                 "demo_agent_mode": demo["agent"]["mode"],
                 "job_agent_mode": job["result"]["agent"]["mode"],
                 "rerun_agent_mode": rerun["agent"]["mode"],
-                "checks": 13,
+                "checks": 14,
                 "timings_seconds": timings,
             },
             indent=2,

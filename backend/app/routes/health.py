@@ -5,6 +5,7 @@ from fastapi import APIRouter
 from ..clients.fortyguard import FortyGuardClient
 from ..clients.llm import ResponsesClient
 from ..config import settings
+from ..services.validation_service import DATA_PATH, PROVENANCE_PATH
 
 
 router = APIRouter(tags=["health"])
@@ -35,5 +36,10 @@ async def health() -> dict:
             "configured": llm.available,
             "provider": settings.llm_provider,
             "core_analysis_requires_llm": False,
+        },
+        "empirical_validation": {
+            "available": DATA_PATH.exists() and PROVENANCE_PATH.exists(),
+            "source": "HEAT-SHIELD controlled human-exposure trials",
+            "requires_external_api": False,
         },
     }

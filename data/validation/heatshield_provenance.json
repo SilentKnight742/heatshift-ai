@@ -1,0 +1,83 @@
+{
+  "dataset": {
+    "title": "DATASETS HEATSHIELD project Loughborough University, averaged per condition and individual sessions",
+    "authors": [
+      "George Havenith",
+      "Simon Hodder",
+      "James Smallcombe",
+      "Ollie Jay",
+      "Josh Foster"
+    ],
+    "publisher": "Figshare",
+    "published_date": "2024-06-21",
+    "doi": "10.6084/m9.figshare.25722300.v1",
+    "landing_page": "https://figshare.com/articles/dataset/25722300",
+    "funding": "HEAT-SHIELD, European Union Horizon 2020 grant agreement 668786",
+    "license": {
+      "name": "Creative Commons Attribution 4.0 International",
+      "identifier": "CC BY 4.0",
+      "url": "https://creativecommons.org/licenses/by/4.0/"
+    }
+  },
+  "source_file": {
+    "figshare_file_id": 46004385,
+    "name": "D2 DATASET FINAL HEATSHIELD individual sessions March 2024 PWC6.xlsx",
+    "download_url": "https://ndownloader.figshare.com/files/46004385",
+    "size_bytes": 2286463,
+    "md5": "e36962603afbdbd6e9856936aacab62f"
+  },
+  "derived_slice": {
+    "prepared_at": "2026-08-30",
+    "file": "heatshield_trials.csv",
+    "sha256": "f80db381ab856b5720a84f27090c9b7988ff17bf29998f800b73458b8f1113d9",
+    "selection": "Rows from source studies 1 through 6 only. The workbook explanation identifies studies 1-6 as the complete one-hour modelling trials and studies 7-14 as duplicate subsets created for within-subject comparisons.",
+    "records": 566,
+    "pseudonymous_participants": 32,
+    "source_study_ids": [1, 2, 3, 4, 5, 6],
+    "transformation": "Selected and renamed twelve source columns; normalized YES/NO solar and coverall flags to true/false; retained source numeric precision; did not impute, alter, or generate measurements.",
+    "reproduction_script": "scripts/prepare_heatshield_validation.py"
+  },
+  "fields": {
+    "study_id": "Source study number; studies 1-6 are the non-duplicate one-hour trial groups.",
+    "participant_id": "Pseudonymous participant identifier from the public source workbook.",
+    "air_temperature_c": "Measured average air temperature in degrees Celsius.",
+    "relative_humidity_percent": "Measured average relative humidity in percent.",
+    "air_speed_mps": "Measured average air speed in metres per second.",
+    "solar_exposure": "Whether the experimental solar-radiation condition was active.",
+    "high_clothing_coverage": "Whether the participant wore the high-coverage ensemble including a full-body coverall.",
+    "apparent_temperature_c": "Apparent Temperature calculated in the source workbook.",
+    "heat_index_c": "Heat Index in degrees Celsius calculated in the source workbook.",
+    "wbgt_outdoor_c": "Outdoor Wet Bulb Globe Temperature in degrees Celsius from the source workbook.",
+    "utci_c": "Universal Thermal Climate Index in degrees Celsius calculated in the source workbook.",
+    "measured_pwc_loss_percent": "Observed one-hour physical work capacity loss relative to the participant's thermoneutral reference condition."
+  },
+  "required_attribution": [
+    {
+      "title": "An advanced empirical model for quantifying the impact of heat and climate change on human physical work capacity",
+      "doi": "10.1007/s00484-021-02105-0"
+    },
+    {
+      "title": "Quantifying the impact of heat on human physical work capacity; part II: the observed interaction of air velocity with temperature, humidity, sweat rate, and clothing is not captured by most heat stress indices",
+      "doi": "10.1007/s00484-021-02212-y"
+    },
+    {
+      "title": "Quantifying the impact of heat on human physical work capacity; part III: the impact of solar radiation varies with air temperature, humidity, and clothing coverage",
+      "doi": "10.1007/s00484-021-02205-x"
+    },
+    {
+      "title": "Quantifying the impact of heat on human physical work capacity; part IV: interactions between work duration and heat stress severity",
+      "doi": "10.1007/s00484-022-02370-7"
+    },
+    {
+      "title": "Comparing the efficacy of different climate indices for prediction of labor loss, body temperatures, and thermal perception in a wide variety of warm and hot climates",
+      "doi": "10.1152/japplphysiol.00613.2023"
+    }
+  ],
+  "limitations": [
+    "These are controlled environmental-chamber exercise trials, not observations from the fictional Phoenix logistics yard.",
+    "The outcome is measured physical work capacity loss, not heat illness, injury, or a regulatory compliance result.",
+    "Participants contributed repeated trials, so records are not statistically independent; HeatShift reports descriptive correlations without inferential p-values.",
+    "The public slice does not contain workplace schedules, real employer data, worker identities, acclimatization status, or on-site Phoenix WBGT measurements.",
+    "HeatShift applies a fixed benchmark profile and does not fit or tune policy thresholds on these measurements."
+  ]
+}

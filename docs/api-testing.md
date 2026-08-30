@@ -45,6 +45,22 @@ mode.
   profiles, and six-task shift used by the narrow vertical slice.
 - No external API or LLM call is made.
 
+### Real-data empirical benchmark
+
+- `GET /api/validation/heatshield` returns a reproducible analysis of 566
+  measured HEAT-SHIELD human-exposure sessions from 32 pseudonymous participants.
+- Confirm `dataset.license.identifier` is `CC BY 4.0`,
+  `benchmark_profile.fitted_to_dataset` is `false`, and
+  `benchmark_type` is `descriptive_empirical_alignment`.
+- Confirm the score-to-measured-PWC-loss Spearman correlation is `0.7718` and
+  `mean_loss_difference_percentage_points` is `36.45`.
+- The endpoint reads the integrity-checked bundled CSV. It makes no external API
+  or LLM call and requires no secret.
+
+```bash
+curl -sS https://heatshift-ai-api.vercel.app/api/validation/heatshield
+```
+
 ### Complete analysis
 
 - `POST /api/demo` runs the entire workflow in one request.

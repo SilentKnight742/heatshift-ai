@@ -27,3 +27,18 @@ The result measures schedule exposure under the configured product screening pol
 - A qualified safety professional and on-site WBGT measurement remain necessary for operational controls.
 
 Raw metrics and activity IDs are stored in `data/evaluation_results.json`.
+
+## Separate measured-outcome benchmark
+
+The operational replay above still combines real FortyGuard evidence with a
+fictional shift. To test the policy against a real outcome, HeatShift separately
+applies unchanged policy v1.0.0 to 566 controlled HEAT-SHIELD human-exposure
+sessions from 32 pseudonymous participants.
+
+The fixed score has a descriptive Spearman rank correlation of 0.7718 with
+measured one-hour physical work-capacity loss. Sessions below score 50 average
+14.37% measured loss; sessions at or above 50 average 50.82%, a 36.45
+percentage-point difference. The comparison is not fitted, causal, clinical, or
+a Phoenix field study. Full provenance, index comparisons, reproduction steps,
+and correct claim language are in the
+[empirical benchmark](real-data-validation.md).

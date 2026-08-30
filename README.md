@@ -10,6 +10,12 @@ Primary submission track: **Industrial & Enterprise**. Agentic tool execution is
 
 Across three completed real FortyGuard historical replays, HeatShift reduced worker-minutes at or above the configured screening threshold by **78.0%** (**3,690 → 810**) while retaining **100%** of scheduled task time. See [the complete evaluation](docs/evaluation.md) and [raw results](data/evaluation_results.json).
 
+Separately, the existing screening policy was tested without fitting against
+**566 measured HEAT-SHIELD human-exposure sessions**. Its score has a **0.7718
+Spearman rank correlation** with measured one-hour physical work-capacity loss;
+sessions at or above the product threshold averaged **36.45 percentage points
+more loss** than sessions below it. See the [empirical benchmark](docs/real-data-validation.md).
+
 The demo scenario contains one fictional operation, three fictional crews (12 workers), and six tasks. The FortyGuard responses and activity IDs are real.
 
 ## What works
@@ -25,6 +31,7 @@ The demo scenario contains one fictional operation, three fictional crews (12 wo
 - MapLibre map plus a GPU-independent real-GeoJSON renderer.
 - Before/after schedule, manager recommendations, evidence drawer, and interactive spectacles HUD.
 - Three-replay offline evaluation and automated backend/frontend checks.
+- Reproducible CC BY 4.0 human-trial benchmark with integrity hashes and public metrics API.
 
 ## Quick start
 
@@ -83,6 +90,7 @@ The separation is deliberate: FortyGuard supplies evidence; the risk engine and 
 | `GET` | `/api/analyses/{id}` | Retrieve a job; deterministically reconstruct valid IDs after a serverless cold start |
 | `POST` | `/api/analyses/{id}/agent` | Re-run the auditable agent briefing |
 | `GET` | `/api/demo/scenario` | Inspect the fictional site, crews, and shift |
+| `GET` | `/api/validation/heatshield` | Inspect the real HEAT-SHIELD benchmark, measured metrics, provenance, and limitations |
 
 Interactive OpenAPI documentation is available at `/docs`.
 
@@ -90,6 +98,9 @@ For an independent review that starts with the problem and scenario, separates
 real evidence from simulated inputs, reproduces the calculations, and provides
 a complete pass/fail protocol, use the
 [third-party evaluator handbook](docs/third-party-evaluator-guide.md).
+The stricter [claim-validation suite](docs/claim-validation-suite.md) adds a
+standard-library oracle, randomized differential checks, mutation checks,
+deployed determinism testing, and an explicit external-provenance trust tier.
 
 ## Data provenance
 
@@ -101,6 +112,11 @@ The main replay uses:
 - Environmental range: August 28, 2026 from 06:00–16:00 GMT−7
 
 Two additional pairs of completed real activity IDs are retained in `data/evaluation_results.json`. The client follows FortyGuard's official [`POST /v1/heatmap`](https://docs-api.fortyguard.com/docs/create-heatmap), [`POST /v1/env_params`](https://docs-api.fortyguard.com/docs/environmental-parameters), and [`GET /v1/status/{activity_id}`](https://docs-api.fortyguard.com/docs/check-status) flow.
+
+The separate empirical benchmark uses the public, CC BY 4.0
+[HEAT-SHIELD individual-session dataset](https://doi.org/10.6084/m9.figshare.25722300.v1).
+The checked-in 566-row derived slice has a recorded SHA-256 and can be rebuilt
+from the original workbook with `scripts/prepare_heatshield_validation.py`.
 
 ## Screening methodology
 
@@ -114,6 +130,7 @@ NIOSH guidance links are curated tool outputs, including [workplace recommendati
 
 ```bash
 python3 -m pytest backend/tests -q
+python3 scripts/run_claim_evaluation.py
 python3 scripts/generate_evaluation.py
 cd frontend && npm run lint && npm run build
 ```
@@ -161,7 +178,7 @@ the endpoint-by-endpoint [API testing guide](docs/api-testing.md).
 ```text
 backend/     FastAPI, FortyGuard client, models, services, agent, tests
 frontend/    Next.js dashboard, MapLibre/SVG map, timeline, evidence, HUD
-data/        fictional demo inputs, policy, saved real responses, evaluation
+data/        fictional demo inputs, real evidence, validation slice, evaluation
 scripts/     live capability checks and reproducible evaluation
 docs/        architecture, methodology, evaluation, demo, submission copy
 ```

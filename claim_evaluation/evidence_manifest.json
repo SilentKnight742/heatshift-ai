@@ -1,0 +1,13 @@
+{
+  "purpose": "Identity pins for the exact inputs audited by the independent oracle. These hashes detect changes; they do not authenticate the provider origin of a file.",
+  "sha256": {
+    "data/cache/evaluation_2026-08-25.json": "70d2b594569fb71c6572c81c76539d45ee07da79517fea8c6be33afb44309652",
+    "data/cache/evaluation_2026-08-27.json": "4309e194e755f8b01f13ec55b03d16872bb4aece1d24639ab69b4cfb474e37f8",
+    "data/cache/fortyguard_demo_response.json": "b466e2ac8d3e4bd08b459a564443fb47d93a871730980a5d0564702ffe63e9ac",
+    "data/cache/fortyguard_environment_response.json": "ef9c6e56e67389c287d8d37c22d1668da7e22d1f7df5d2f6619c32ee1708c01b",
+    "data/demo/crews.json": "2f7d799fbb61c4a8ffff8a348a8a9f19b3609ced5c37db6b559577c68caccefe",
+    "data/demo/policy_rules.json": "0c43d6bbfcc7accbc6133cd3f16c61679ad934af3a74a8c9b86aa713b379fcee",
+    "data/demo/shift.json": "ebeb2f25c034e03726f64447193f0fbd5902048437a30c9e8edb52715848dc4b",
+    "data/demo/site.geojson": "05d1994ed5189f731c7aaa95032b0d1b876a6c4d3b7bfe447cf4cfa15b998437"
+  }
+}

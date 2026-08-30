@@ -88,6 +88,8 @@ This is the most important truth table in the project.
 | Tasks, timings, dependencies, and movable/fixed rules | Fictional | They form a controlled scheduling test case. |
 | Policy v1.0.0 and its 0–100 bands | Product-defined | The rules are transparent and deterministic, but they are not medical or regulatory thresholds. |
 | Risk scores and optimized schedule | Derived | The backend computes them from the real provider evidence plus the fictional operation and versioned product policy. |
+| HEAT-SHIELD benchmark inputs and PWC-loss outcomes | Real research measurements | 566 controlled human-exposure sessions from a public CC BY 4.0 dataset; they are separate from the fictional Phoenix scenario. |
+| HEAT-SHIELD benchmark metrics | Derived, descriptive | HeatShift applies its existing policy without fitting and reports correlations and group summaries, not illness predictions or causal effects. |
 | Worker alerts and smart-spectacles view | Simulated | No physical wearable, push notification, or supervisor notification is connected. |
 | NIOSH guidance links | Real guidance references | The agent returns curated official links; it does not perform open-web safety research at runtime. |
 | LLM explanation | Generated or deterministic fallback | Its wording may vary. It cannot change the numbers returned by the deterministic engine. |
@@ -379,6 +381,7 @@ guidance links.
 | `GET` | `/docs` | 200 | Interactive Swagger UI |
 | `GET` | `/openapi.json` | 200 | OpenAPI 3 contract |
 | `GET` | `/api/demo/scenario` | 200 | Fictional site, crews, and original shift; no provider or LLM call |
+| `GET` | `/api/validation/heatshield` | 200 | Real-data benchmark, provenance, measured PWC-loss metrics, assumptions, and limitations; no provider or LLM call |
 | `POST` | `/api/demo` | 200 | Complete replay, optimization, recommendations, alerts, and agent trace |
 | `POST` | `/api/analyses` | 201 | Create and synchronously complete the bundled analysis; body must be empty or `{}` |
 | `GET` | `/api/analyses/{analysis_id}` | 200 or 404 | Retrieve a job; valid UUIDs can be replayed after a cold start |
@@ -401,8 +404,10 @@ it is not general-purpose durable job storage.
    `core_analysis_requires_llm: false`.
 4. Expand `GET /api/demo/scenario` and execute it. Confirm the operation is
    fictional, with three crews and six tasks.
-5. Expand `POST /api/demo` and execute it. It needs no request body.
-6. In the response, search for `metrics`, `movements`, `data_provenance`, and
+5. Expand `GET /api/validation/heatshield` and execute it. Confirm 566 sessions,
+   32 pseudonymous participants, `CC BY 4.0`, and `fitted_to_dataset: false`.
+6. Expand `POST /api/demo` and execute it. It needs no request body.
+7. In the response, search for `metrics`, `movements`, `data_provenance`, and
    `tool_trace` and compare them with the expected values below.
 
 This is enough for a product-level first pass, but not for a thorough technical
@@ -477,13 +482,14 @@ Pass:
 - `durable_user_storage` is false;
 - FortyGuard mode is `cached` and saved real responses are available;
 - the LLM is configured, but `core_analysis_requires_llm` is false; and
+- `empirical_validation.available` is true and requires no external API; and
 - no secret value appears.
 
 **HS-03 — Documentation and schema**
 
 Open `/docs` and `/openapi.json`.
 
-Pass: Swagger loads, and the schema contains all six HeatShift paths listed in
+Pass: Swagger loads, and the schema contains all seven HeatShift paths listed in
 the service catalog, in addition to documentation/root behavior.
 
 ### B. Scenario integrity
@@ -503,6 +509,25 @@ sections 5 and 6 of this guide.
 Pass: exactly two tasks are movable (`heavy-cargo-loading` and
 `asphalt-repair`) and exactly four are fixed. Asphalt repair depends on
 `vehicle-inspection`.
+
+**HS-05A — Real-data benchmark integrity**
+
+```bash
+curl -sS https://heatshift-ai-api.vercel.app/api/validation/heatshield
+```
+
+Pass:
+
+- `benchmark_type` is `descriptive_empirical_alignment`;
+- the dataset contains 566 sessions and 32 pseudonymous participants;
+- the license is `CC BY 4.0` and the DOI is
+  `10.6084/m9.figshare.25722300.v1`;
+- `benchmark_profile.fitted_to_dataset` is false;
+- score-to-PWC-loss Spearman correlation is 0.7718;
+- the below-threshold and at/above-threshold groups contain 248 and 318
+  sessions, with mean measured loss of 14.37% and 50.82%; and
+- the response clearly says controlled trials, PWC loss, repeated measures,
+  descriptive evidence, and no illness or causal claim.
 
 ### C. Complete analysis
 
@@ -689,10 +714,11 @@ quota should be reported separately from the deterministic backend result.
 
 ## 15. Complete automated public acceptance test
 
-The repository includes a dependency-free Python script that executes 13 public
+The repository includes a dependency-free Python script that executes 14 public
 checks covering root, health, schema, docs, scenario, CORS, complete demo, job
 creation, retrieval, cold recovery, agent rerun, custom-input rejection, invalid
-IDs, deterministic metrics, tool traces, and basic secret scanning.
+IDs, the real-data benchmark, deterministic metrics, tool traces, and basic
+secret scanning.
 
 ```bash
 git clone https://github.com/SilentKnight742/heatshift-ai.git
@@ -706,7 +732,7 @@ Expected final output starts with:
 {
   "status": "passed",
   "base_url": "https://heatshift-ai-api.vercel.app",
-  "checks": 13
+  "checks": 14
 }
 ```
 
@@ -722,6 +748,19 @@ python3 scripts/smoke_public_api.py --require-llm
 That version intentionally fails if the main demo falls back. It can consume
 free-plan quota and should not be run in a tight loop.
 
+For an assertion-oriented audit that independently reimplements the published
+policy and scheduler instead of trusting backend output, use the
+[claim-validation suite](claim-validation-suite.md):
+
+```bash
+python3 scripts/run_claim_evaluation.py
+python3 scripts/run_claim_evaluation.py --remote --repeat 3
+```
+
+That suite also reports provider origin as `UNVERIFIED` until the six activity
+IDs are re-fetched read-only with `--verify-provider`. A checked-in activity ID
+is traceability evidence, but is not by itself cryptographic authentication.
+
 ## 16. Source-level and local tests
 
 For a deeper review, use Python 3.11+ in a disposable clone. Cached mode needs
@@ -732,6 +771,7 @@ python3 -m venv .venv
 source .venv/bin/activate
 pip install -r backend/requirements.txt
 python3 -m pytest backend/tests -q
+python3 scripts/run_claim_evaluation.py
 python3 scripts/generate_evaluation.py
 ```
 
@@ -750,6 +790,9 @@ Important source files for an independent audit:
 - [agent runner](../backend/app/agent/runner.py)
 - [agent tools](../backend/app/agent/tools.py)
 - [API routes](../backend/app/routes/analyses.py)
+- [empirical validation service](../backend/app/services/validation_service.py)
+- [HEAT-SHIELD provenance](../data/validation/heatshield_provenance.json)
+- [real-data research and metrics](real-data-validation.md)
 - [public smoke contract](../scripts/smoke_public_api.py)
 - [screening methodology](methodology.md)
 
@@ -831,6 +874,8 @@ true:
 
 - the automated smoke test passes without `--require-llm`;
 - the exact deterministic values in section 13 match;
+- the HEAT-SHIELD endpoint returns the integrity-checked 566-session benchmark
+  and exact section 14 metrics without implying clinical or causal validation;
 - provenance contains 198 real saved heatmap cells, 11 observations, and both
   expected FortyGuard activity IDs;
 - the two movements and every scheduling constraint match section 9;

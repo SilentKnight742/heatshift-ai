@@ -4,6 +4,8 @@ import asyncio
 import copy
 import json
 
+import pytest
+
 from app.agent.runner import AgentRunner
 from app.agent.tools import AgentToolbox
 from app.services.analysis_service import AnalysisService
@@ -263,3 +265,34 @@ def test_tool_runtime_failure_is_recoverable() -> None:
 
     assert tool_result["ok"] is False
     assert tool_result["error"]["code"] == "tool_runtime_failure"
+
+
+@pytest.mark.xfail(
+    reason=(
+        "Known assurance gap: model prose is returned after tool validation but is not "
+        "checked for contradictions with the official deterministic metrics."
+    ),
+    strict=False,
+)
+def test_model_briefing_cannot_contradict_official_metrics() -> None:
+    result = analysis()
+    llm = StubLLM(
+        [
+            {
+                "output": [
+                    tool_call(f"call-{index}", name, result.analysis_id)
+                    for index, name in enumerate(
+                        AgentRunner.FALLBACK_SEQUENCE, start=1
+                    )
+                ]
+            },
+            final_response(
+                "Official exposure reduction is 99.9%; all heat risk was eliminated."
+            ),
+        ]
+    )
+
+    output = asyncio.run(AgentRunner(llm=llm).run(result))
+
+    assert "99.9%" not in output.explanation
+    assert "all heat risk was eliminated" not in output.explanation.lower()

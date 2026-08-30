@@ -15,6 +15,7 @@ jobs:
       - run: pip install -r backend/requirements.txt
       - run: python -c "from main import app; assert app.title == 'HeatShift AI'"
       - run: python -m pytest backend/tests -q
+      - run: python scripts/run_claim_evaluation.py
 
   frontend:
     runs-on: ubuntu-latest
