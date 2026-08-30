@@ -26,6 +26,96 @@ Allow up to 150 seconds for an analysis request before declaring it timed out.
 Most requests are much faster, but the free hosted model and serverless cold
 starts can vary.
 
+## Judge-oriented product overview
+
+### One-sentence pitch
+
+HeatShift AI turns heat evidence and a planned work shift into an explainable,
+constraint-safe recommendation about **which flexible tasks should move, when
+they should move, what cannot move, and what residual risk still needs human
+control**.
+
+It is not another weather application. A weather application answers “how hot
+will it be?” HeatShift answers a narrower operational question: “given this
+site, these crews, this work, and these constraints, what can a safety manager
+change before the shift starts?”
+
+### What FortyGuard is
+
+FortyGuard is the external environmental-data provider used by this prototype.
+It supplies a hyperlocal thermal map and environmental parameters for a real
+geographic area. A judge does not need a FortyGuard account or knowledge of its
+API. In product terms, FortyGuard is the **evidence layer**: it describes the
+thermal environment, but it does not know HeatShift's crews, task durations,
+PPE, workload, dependencies, or which work is movable.
+
+HeatShift adds that operational context, calculates its transparent screening
+policy, searches valid schedule changes, preserves constraints, and presents the
+result with source IDs and limitations. The public deployment uses labelled
+saved responses from completed real activities so evaluation is reliable and
+free; a future operator could select live mode.
+
+### Who this is for
+
+| Audience | Their practical question | What HeatShift gives them |
+|---|---|---|
+| HSE/EHS manager or site safety lead | “Where is the heat burden, which work is most concerning, and what should I change?” | Site evidence, factor-level screening scores, before/after exposure, recommendations, residual-risk escalation, and an audit trail |
+| Operations manager, dispatcher, or shift planner | “Can we reduce exposure without cancelling work or breaking the plan?” | Constraint-safe task movements that preserve crews, duration, fixed work, dependencies, and allowed windows |
+| Crew supervisor or foreperson | “What changes do I need to communicate before or during the shift?” | A concise optimized plan, reasons for each change, fixed-work warnings, and worker-facing alerts |
+| Worker | “What should I do now, and whom should I contact?” | A future simple alert or wearable view with timing, location, severity, hydration/recovery reminder, and acknowledgement—not the full management dashboard |
+| Regional safety director or employer | “Can I compare sites and document why a decision was made?” | A future portfolio view, trend metrics, evidence provenance, policy versioning, and decision history |
+| Hackathon judge, auditor, or researcher | “Are the result and AI behavior real, reproducible, and honestly scoped?” | Raw evidence, exact arithmetic, independent tests, agent trace, empirical benchmark, and explicit fictional/real boundaries |
+
+The strongest early users are organizations with outdoor or semi-outdoor work
+that can sometimes be rescheduled: construction, logistics yards, road and rail
+maintenance, utilities, airports, municipal services, agriculture, mining, and
+large outdoor facilities. HeatShift is less useful when every task is immovable
+or when the organization is looking for a medical diagnosis rather than an
+operational planning aid.
+
+### What a successful product experience looks like
+
+Before a shift, a manager selects or imports a site, crews, tasks, work windows,
+dependencies, workload, PPE, shade, and acclimatization status. HeatShift adds
+environmental evidence, highlights higher-priority work, proposes only legal
+schedule changes, and shows the before/after consequence. The manager reviews,
+edits, approves, or rejects the proposal. Approved changes then flow to crew
+supervisors and workers, while unresolved fixed work remains visible for added
+controls or escalation.
+
+The current prototype performs that loop for one bundled scenario. It does not
+yet accept arbitrary customer schedules or send real notifications.
+
+### What a judge should see on the frontend
+
+A non-technical display should tell the story in this order:
+
+1. **Problem and site context:** where the shift is, when it runs, who is
+   working, and a prominent statement that the bundled operation is fictional.
+2. **Environmental evidence:** a thermal map and hourly heat strip labelled with
+   the real provider, timestamps, saved/live mode, and source activity IDs.
+3. **Baseline operational risk:** the original timeline, highest-priority tasks,
+   factor explanations, and worker-minutes above the product threshold.
+4. **Recommended plan:** a side-by-side or before/after timeline showing exactly
+   what moved, what stayed fixed, and why every movement is permitted.
+5. **Outcome cards:** 1,230 → 270 exposed worker-minutes, 78.0% reduction for the
+   current fictional replay, 100% task time retained, two tasks moved, and
+   residual alerts—not an unsupported “workers saved” number.
+6. **Manager actions:** approve/edit/reject, added controls for fixed work,
+   hydration/recovery and acclimatization reminders, and worker communication.
+7. **Evidence and trust:** policy version, factor arithmetic, source IDs, agent
+   tool trace, limitations, and the distinction between deterministic results
+   and LLM wording.
+8. **Empirical proof-of-concept:** a separate HEAT-SHIELD panel showing 566
+   controlled sessions, 32 participants, 0.7718 rank correlation, and the 36.45
+   percentage-point threshold-group difference with its repeated-measures and
+   non-causal qualifiers.
+
+The visual language should say **screening score**, **worker-minutes at or above
+the product threshold**, and **measured physical work-capacity loss**. It should
+never relabel these as illness probability, injuries prevented, regulatory
+compliance, or real Phoenix employees.
+
 ## 1. What problem are we trying to solve?
 
 Outdoor work can become more hazardous as heat, humidity, sun exposure,
@@ -222,6 +312,121 @@ Across these three controlled replays, exposed worker-minutes fall from 3,690 to
 repeatability demonstration for one operation, not a statistical safety study.
 See the [evaluation report](evaluation.md) and
 [`data/evaluation_results.json`](../data/evaluation_results.json).
+
+## 6A. Separate real-outcome evidence: HEAT-SHIELD
+
+The FortyGuard replays prove that HeatShift can process real environmental
+evidence, but the operation and schedule are fictional. They therefore cannot
+show whether a higher HeatShift score corresponds to a measured human outcome.
+The HEAT-SHIELD benchmark answers that separate question.
+
+### What the source contains
+
+The public, CC BY 4.0
+[HEAT-SHIELD dataset](https://doi.org/10.6084/m9.figshare.25722300.v1)
+contains controlled human exercise sessions under varied temperature, humidity,
+air movement, solar radiation, and clothing conditions. The outcome used here is
+the source's measured percentage loss of one-hour physical work capacity (PWC)
+relative to a thermoneutral reference. It is not heat illness, injury, or a
+probability of harm.
+
+HeatShift uses 566 individual sessions from 32 pseudonymous participants. Only
+source studies 1–6 are selected because the workbook identifies them as the
+complete one-hour modelling trials; later study IDs are duplicate subsets for
+within-participant comparisons. The derived CSV is integrity-pinned and can be
+rebuilt from the public workbook with
+[`scripts/prepare_heatshield_validation.py`](../scripts/prepare_heatshield_validation.py).
+
+Observed ranges include:
+
+| Measurement | Minimum | Maximum |
+|---|---:|---:|
+| Air temperature | 14.311°C | 50.786°C |
+| Relative humidity | 17.322% | 82.294% |
+| Air speed | 0.019 m/s | 3.495 m/s |
+| Apparent Temperature | 13.063°C | 62.149°C |
+| Outdoor WBGT | 11.787°C | 40.821°C |
+| UTCI | 14.964°C | 62.832°C |
+| Measured PWC loss | 0.000% | 93.581% |
+
+### What HeatShift tested
+
+The existing policy was applied without fitting or changing its bands. Every
+session used one standardized heavy-work, acclimatized profile. The source
+coverall flag mapped to high versus low PPE burden, and its experimental solar
+flag mapped to the existing direct-solar adjustment:
+
+```text
+score = points for source Apparent Temperature
+      + 18 heavy-work points
+      + 0 acclimatization points
+      + 10 for source coverall, otherwise 0
+      + 6 for source solar exposure, otherwise 0
+```
+
+The analysis asked whether higher fixed-policy scores occurred alongside greater
+measured PWC loss, whether the product threshold separated sessions with
+different measured outcomes, and how the coarse score compared with continuous
+heat indices already present in the research data.
+
+### Results
+
+| Result | Value |
+|---|---:|
+| Score vs PWC loss, Pearson correlation | 0.7744 |
+| Score vs PWC loss, Spearman rank correlation | 0.7718 |
+| Environmental-points component vs PWC loss, Spearman | 0.8133 |
+| Sessions below score 50 | 248 |
+| Mean measured loss below score 50 | 14.37% |
+| Sessions at/above score 50 | 318 |
+| Mean measured loss at/above score 50 | 50.82% |
+| Difference between threshold groups | 36.45 percentage points |
+
+Band summaries are:
+
+| Band | Sessions | Observed scores | Mean loss | Median | Middle 50% |
+|---|---:|---:|---:|---:|---:|
+| Moderate | 248 | 26–48 | 14.37% | 11.52% | 0.00–23.18% |
+| High | 201 | 50–73 | 47.18% | 44.20% | 32.08–67.05% |
+| Critical | 117 | 79–89 | 57.07% | 59.04% | 43.72–72.77% |
+
+There are no low-band sessions because the standardized heavy-work addition
+makes even the coolest records moderate. This is an expected profile property,
+not missing data.
+
+For comparison:
+
+| Metric | Pearson | Spearman |
+|---|---:|---:|
+| HeatShift score | 0.7744 | 0.7718 |
+| Apparent Temperature | 0.8425 | 0.8688 |
+| Heat Index | 0.8612 | 0.8516 |
+| Outdoor WBGT | 0.8263 | 0.8838 |
+| UTCI | 0.8583 | 0.8732 |
+
+This is useful but intentionally modest evidence. The HeatShift score is
+strongly associated with measured work-capacity loss and its bands move in the
+expected direction, but the continuous research indices correlate more strongly.
+The result supports the score as an explainable prioritization signal; it does
+not show that HeatShift outperforms established indices.
+
+### Correct interpretation
+
+Pearson measures linear association. Spearman measures whether higher values
+generally rank with higher losses; 0.7718 does not mean “77.18% accurate.” The
+36.45 percentage-point group difference is descriptive at HeatShift's
+product-defined threshold, not proof that 50 is a medical or regulatory limit.
+
+Participants contributed repeated sessions, so the 566 rows are not independent
+people. HeatShift therefore reports descriptive statistics without causal
+claims or inferential p-values. These are controlled laboratory trials, not a
+prospective field evaluation, and PWC loss must never be rewritten as illness
+probability or injuries prevented.
+
+The complete method, provenance, candidate-source comparison, reproduction
+steps, and display-safe claim language are in the
+[empirical benchmark report](real-data-validation.md). The public aggregate
+contract is `GET /api/validation/heatshield`.
 
 ## 7. How the deterministic screening score works
 
@@ -775,11 +980,15 @@ python3 scripts/run_claim_evaluation.py
 python3 scripts/generate_evaluation.py
 ```
 
-Pass: all backend tests pass, including normalization, missing values, scoring,
-clamping, optimizer constraints, API behavior, agent failure paths, and offline
-integration. The evaluation generator reproduces the scenario rows and the
-3,690 → 810 aggregate result; its `generated_at` timestamp will naturally
-change.
+Current baseline: 50 tests pass and one intentional expected failure documents
+the known LLM narrative-grounding gap. The offline independent audit reports 26
+passes, zero failures, one external FortyGuard-provenance check unverified, and
+one threshold-sensitivity observation. The combined three-repetition public
+audit reports 67 passes and zero failures. Coverage includes normalization,
+missing values, scoring, clamping, optimizer constraints, API behavior, agent
+failure paths, HEAT-SHIELD metrics and mutations, and offline integration. The
+evaluation generator reproduces the scenario rows and the 3,690 → 810 aggregate
+result; its `generated_at` timestamp will naturally change.
 
 Important source files for an independent audit:
 
@@ -800,7 +1009,31 @@ Do not enable live FortyGuard merely to test the normal build. Live activity
 creation can consume provider credits and is deliberately separated from the
 offline and public acceptance suites.
 
-## 17. What is intentionally out of scope right now?
+## 17. Current status, scope, and future product
+
+### Current status
+
+The current build is a completed, deployed backend vertical slice rather than a
+general customer platform. It proves one end-to-end decision loop with enough
+depth to audit:
+
+- the FastAPI backend and interactive OpenAPI documentation are public on
+  Vercel;
+- the fixed Phoenix scenario, environmental normalization, policy scoring,
+  constraint-aware scheduling, recommendations, alerts, LLM/fallback agent, and
+  serverless recovery paths are implemented;
+- the separate HEAT-SHIELD aggregate endpoint provides real measured-outcome
+  evidence for the screening policy;
+- normal tests, an independent standard-library claim oracle, local HTTP smoke
+  tests, GitHub Actions, and public black-box audits pass; and
+- frontend source exists, but a public judge-ready dashboard is deliberately not
+  part of this backend acceptance baseline yet.
+
+This level is appropriate for a hackathon proof of concept: it demonstrates the
+technical and product thesis honestly, but it is not presented as a commercially
+operational safety system.
+
+### What is intentionally out of scope right now
 
 The current build does not provide:
 
@@ -823,9 +1056,71 @@ letting anonymous users submit and store private provider keys would require
 authentication, encrypted secret storage, revocation, and abuse controls. It is
 intentionally excluded from this unauthenticated zero-cost slice.
 
+### Next frontend milestone
+
+The immediate next phase is to turn the existing APIs into a polished,
+non-technical decision interface following the eight-part display sequence in
+the judge overview. The frontend should prioritize the map and work timeline,
+make the before/after movement visually obvious, keep residual fixed-work risk
+visible, and place provenance and empirical evidence one click away. It should
+not expose raw JSON as the primary experience, although the JSON and Swagger
+contract should remain available for auditors.
+
+### Path from prototype to pilot
+
+A limited real-world pilot would require:
+
+1. Organization accounts, roles, authentication, encrypted secrets, and durable
+   audit history.
+2. Configurable sites, crews, tasks, policies, time zones, work windows,
+   dependencies, and schedule import from existing workforce systems.
+3. Live environmental refresh plus on-site WBGT or approved sensor input, with
+   missing/stale-data handling and supervisor override.
+4. A review-and-approval workflow; HeatShift should recommend changes rather
+   than silently dispatch safety-critical schedule changes.
+5. Real notification delivery, acknowledgements, escalation, multilingual and
+   accessibility support, and confirmation that supervisors—not just devices—
+   received unresolved warnings.
+6. Prospective field evaluation using independent sites, participant-aware
+   statistical analysis, operational outcomes, and qualified safety oversight.
+
+### Longer-term product direction
+
+If pilots support the concept, HeatShift could become a multi-site operational
+heat-management layer. It could compare planned exposure across sites, learn
+organization-specific constraints without obscuring official policy, integrate
+with planning and sensor systems, preserve decision history, and provide a
+worker communication channel. A future environmental policy should evaluate a
+continuous UTCI- or WBGT-informed component because the HEAT-SHIELD comparison
+shows those research indices retain more information than the current coarse
+Apparent-Temperature bands.
+
+Commercial production would additionally need a paid-capacity hosting plan,
+monitoring, backup/recovery, privacy and retention controls, security review,
+formal service ownership, policy governance, and jurisdiction-specific legal
+and occupational-safety review. Those requirements are a roadmap, not features
+the hackathon build claims today.
+
 ## 18. How to judge the result responsibly
 
-A strong evaluation should distinguish four independent questions:
+From a hackathon perspective, HeatShift should be judged on seven dimensions:
+
+| Dimension | What good looks like in this build |
+|---|---|
+| Problem relevance | It addresses a concrete gap between environmental information and work-planning decisions, especially where some work can move and some cannot. |
+| User usefulness | An HSE or operations manager can see the original problem, proposed change, preserved constraints, remaining fixed-work risk, and next action without reading model internals. |
+| Technical credibility | Real provider evidence is normalized, official arithmetic is deterministic, scheduling constraints are checked, and failures do not silently generate weather or scores. |
+| Appropriate AI use | The agent retrieves, orchestrates, explains, and communicates through validated tools; it is not trusted to invent the official safety calculation. |
+| Evidence quality | Activity IDs, policy version, raw inputs, factor traces, real-data benchmark, hashes, citations, and independent tests are available. |
+| Honest scope | Fictional operation, product-defined threshold, simulated alerts, repeated laboratory trials, and production gaps are visibly disclosed. |
+| Feasibility | The narrow slice runs on a zero-cost stack today and has a plausible path to configurable sites, live inputs, approval workflows, sensors, and field evaluation. |
+
+Visual polish should improve comprehension, but it should not substitute for
+correct numbers and visible limitations. A strong display makes three things
+obvious within seconds: **what is happening, what HeatShift recommends changing,
+and why the recommendation can be trusted**.
+
+A strong evaluation should distinguish five independent questions:
 
 1. **Evidence integrity:** Is saved real provider evidence clearly identified,
    non-empty, and traceable to activity IDs?
@@ -836,6 +1131,9 @@ A strong evaluation should distinguish four independent questions:
    crew, or violating a dependency?
 4. **Agent integrity:** Did the LLM or fallback call validated tools, preserve
    the official result, expose its trace, and avoid inventing evidence?
+5. **Empirical integrity:** Does the HEAT-SHIELD response match an independent
+   calculation, and does the display preserve its measured-PWC, repeated-trial,
+   non-fitted, and non-causal boundaries?
 
 Do not award extra confidence merely because the generated explanation sounds
 polished. The auditable data, arithmetic, and constraints are the product's
@@ -925,9 +1223,10 @@ Suggested severity interpretation:
 
 ## 22. Current build record
 
-The backend acceptance baseline was commit
-[`ebeafdbf528e53843d81a020c1194be56f179627`](https://github.com/SilentKnight742/heatshift-ai/commit/ebeafdbf528e53843d81a020c1194be56f179627).
-The handbook itself may be committed later without changing backend behavior.
+The latest completed backend and empirical claim-audit baseline before this
+documentation update was commit
+[`8ff2efb8a124daa874ca2948c8d88bccdc221c84`](https://github.com/SilentKnight742/heatshift-ai/commit/8ff2efb8a124daa874ca2948c8d88bccdc221c84).
+Documentation-only commits after it do not change backend behavior.
 Before reporting a finding, record the current repository commit with:
 
 ```bash
