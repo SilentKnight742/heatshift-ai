@@ -13,6 +13,7 @@ jobs:
         with:
           python-version: "3.13"
       - run: pip install -r backend/requirements.txt
+      - run: python -c "from main import app; assert app.title == 'HeatShift AI'"
       - run: python -m pytest backend/tests -q
 
   frontend:

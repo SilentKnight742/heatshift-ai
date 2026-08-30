@@ -122,9 +122,18 @@ python3 scripts/fetch_fortyguard_environment.py
 
 ## Deployment
 
-- Backend: deploy the repository with `render.yaml`; set `FORTYGUARD_API_KEY`, the deployed frontend in `CORS_ORIGINS`, and `LLM_API_KEY` to a Groq API key. The Blueprint selects Groq's Responses endpoint and the free-plan `openai/gpt-oss-120b` model.
-- Frontend: deploy `frontend/` to Vercel; set `NEXT_PUBLIC_API_BASE_URL` to the backend origin.
-- Keep `FORTYGUARD_MODE=cached` for a stable judging demo or use `live` to demonstrate runtime retrieval with the saved-response fallback.
+The hackathon deployment has a hard zero-cost constraint. Both projects use the
+Vercel Hobby plan and generated `vercel.app` domains; no Render service, database,
+paid monitoring product, or custom domain is required.
+
+- Backend: import the repository into Vercel with the repository root as the project root. Vercel detects the root `main.py` as FastAPI. Set `LLM_API_KEY` to the Groq API key and keep `FORTYGUARD_MODE=cached`; `FORTYGUARD_API_KEY` is optional in cached mode.
+- Frontend: import the same repository as a second Vercel project with `frontend/` as its root. Set `NEXT_PUBLIC_API_BASE_URL` to the backend origin, then add the frontend origin to the backend's `CORS_ORIGINS`.
+- Backend defaults already select Groq's Responses endpoint and free-plan `openai/gpt-oss-120b` model. If its rate limit is exhausted, the deterministic fallback still returns the official result.
+- Live FortyGuard mode is an explicit demo-only option because it can consume API credits; the public default replays labelled responses from successful real activities.
+
+Vercel Hobby is free but limited to personal, non-commercial use. This is a public
+hackathon demo deployment, not a commercial production hosting commitment. See
+[`docs/zero-cost-stack.md`](docs/zero-cost-stack.md) for the complete cost guardrails.
 
 The LLM connection is server-configurable through `LLM_PROVIDER`, `LLM_BASE_URL`,
 `LLM_API_KEY`, and `LLM_MODEL`. OmniRoute is accepted only as an explicit local test
