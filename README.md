@@ -143,6 +143,9 @@ storage is intentionally excluded because this slice has no authentication or en
 secret store.
 
 Run the smoke checklist in [demo-script.md](docs/demo-script.md) after both URLs are public.
+The deployed backend is `https://heatshift-ai-api.vercel.app`; run
+`python3 scripts/smoke_public_api.py` for its complete public contract or follow
+the endpoint-by-endpoint [API testing guide](docs/api-testing.md).
 
 ## Safety limitation
 
