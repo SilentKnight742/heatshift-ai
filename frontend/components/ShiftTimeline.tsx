@@ -1,6 +1,7 @@
 "use client";
 
 import { useState } from "react";
+import ManagerDecisionBar from "@/components/ManagerDecisionBar";
 import type { Movement, ScheduleItem } from "@/lib/api";
 
 interface Props {
@@ -87,6 +88,7 @@ export default function ShiftTimeline({ baseline, optimized, movements }: Props)
         <div className="timeline-divider"><span>→</span></div>
         <TimelineColumn title="HeatShift plan" subtitle="270 exposed worker-minutes" items={optimized} movements={movementMap} optimized />
       </div>
+      <ManagerDecisionBar />
       <button className="movement-toggle" onClick={() => setShowMovements((value) => !value)}>
         <span>{showMovements ? "−" : "+"}</span> {movements.length} schedule movements · 100% task time retained
       </button>
@@ -106,4 +108,3 @@ export default function ShiftTimeline({ baseline, optimized, movements }: Props)
     </section>
   );
 }
-
