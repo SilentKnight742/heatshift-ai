@@ -86,6 +86,11 @@ The separation is deliberate: FortyGuard supplies evidence; the risk engine and 
 
 Interactive OpenAPI documentation is available at `/docs`.
 
+For an independent review that starts with the problem and scenario, separates
+real evidence from simulated inputs, reproduces the calculations, and provides
+a complete pass/fail protocol, use the
+[third-party evaluator handbook](docs/third-party-evaluator-guide.md).
+
 ## Data provenance
 
 The main replay uses:
