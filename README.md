@@ -2,7 +2,7 @@
 
 **Operational heat decisions—not another weather map.**
 
-HeatShift AI is a narrow industrial-safety vertical slice for HSE managers. It retrieves hyperlocal FortyGuard conditions for a fictional Phoenix logistics yard, calculates deterministic screening-level worker heat risk, moves flexible heavy work into cooler valid windows, and formats explainable alerts for a simulated smart-spectacles interface.
+HeatShift AI is an evidence-led industrial heat planning product for HSE managers and operations planners. Its public homepage explains the measured HEAT-SHIELD benchmark; its separate console combines real, pinned FortyGuard environmental evidence with an editable fictional operation, calculates deterministic screening-level worker heat risk, moves flexible work into cooler valid windows, and keeps the remaining risk visible.
 
 Primary submission track: **Industrial & Enterprise**. Agentic tool execution is the technical differentiator; the official safety calculations never depend on an LLM.
 
@@ -20,7 +20,11 @@ Spearman rank correlation** with measured one-hour physical work-capacity loss;
 sessions at or above the product threshold averaged **36.45 percentage points
 more loss** than sessions below it. See the [empirical benchmark](docs/real-data-validation.md).
 
-The demo scenario contains one fictional operation, three fictional crews (12 workers), and six tasks. The FortyGuard responses and activity IDs are real.
+The console opens with one reference operation containing three fictional crews
+and six fictional tasks. Users can create, edit, import, and export their own
+fictional operational scenarios. The current proof of concept evaluates those
+inputs against one fixed Phoenix FortyGuard replay; the provider responses and
+activity IDs are real.
 
 ## What works
 
@@ -32,11 +36,15 @@ The demo scenario contains one fictional operation, three fictional crews (12 wo
 - One-call demo plus create/poll FastAPI workflow.
 - Six-tool orchestration trace with a free hosted Groq model in deployment, provider-configurable
   Responses access for local testing, and a deterministic fallback.
-- MapLibre map plus a GPU-independent real-GeoJSON renderer.
+- Universal SVG renderer for all 198 real GeoJSON cells; no WebGL or map-tile dependency.
+- Separate `/console` workspace with editable site, crew, task, timing,
+  workload, PPE, acclimatization, shade, dependency, and mobility fields.
+- Browser-local scenario persistence plus JSON import/export; no account or
+  database is required and no operational data is stored by the backend.
 - Before/after schedule, constraint/result summary, simulated manager decision state,
   recommendations, evidence drawer, and interactive spectacles HUD.
-- Public HEAT-SHIELD validation panel with measured metrics, source links, and
-  all limitations available in the dashboard.
+- Evidence-led public homepage with HEAT-SHIELD metrics, comparison chart,
+  source link, interpretation, and prominent non-causal limitations.
 - Three-replay offline evaluation and automated backend/frontend checks.
 - Reproducible CC BY 4.0 human-trial benchmark with integrity hashes and public metrics API.
 
@@ -60,7 +68,10 @@ npm ci
 NEXT_PUBLIC_API_BASE_URL=http://localhost:8000 npm run dev
 ```
 
-Open `http://localhost:3000`. The default `FORTYGUARD_MODE=cached` uses labelled responses captured from successful real API activities, so the demo is reliable and consumes no credits.
+Open `http://localhost:3000` for the empirical product story and
+`http://localhost:3000/console` for the interactive planner. The default
+`FORTYGUARD_MODE=cached` uses labelled responses captured from successful real
+API activities, so the console is reliable and consumes no credits.
 
 To call FortyGuard live at runtime:
 
@@ -75,7 +86,8 @@ Live mode submits a heatmap and environmental activity, polls both with bounded 
 
 ```mermaid
 flowchart LR
-    UI[Next.js manager dashboard] --> API[FastAPI workflow]
+    H[Evidence homepage] --> UI[Editable Next.js console]
+    UI --> API[FastAPI workflow]
     API --> FG[FortyGuard client]
     FG --> R[Normalized real evidence]
     R --> E[Deterministic risk engine]
@@ -93,6 +105,7 @@ The separation is deliberate: FortyGuard supplies evidence; the risk engine and 
 |---|---|---|
 | `GET` | `/health` | Backend, FortyGuard, cache, and optional LLM state |
 | `POST` | `/api/demo` | Run the complete Phoenix replay and agent trace |
+| `POST` | `/api/analyze` | Analyze an editable fictional operation against the pinned Phoenix reference environment |
 | `POST` | `/api/analyses` | Run and return a completed job for the bundled single-site analysis |
 | `GET` | `/api/analyses/{id}` | Retrieve a job; deterministically reconstruct valid IDs after a serverless cold start |
 | `POST` | `/api/analyses/{id}/agent` | Re-run the auditable agent briefing |
@@ -156,7 +169,7 @@ Vercel Hobby plan and generated `vercel.app` domains; no Render service, databas
 paid monitoring product, or custom domain is required.
 
 - Backend: import the repository into Vercel with the repository root as the project root. Vercel detects the root `main.py` as FastAPI. Set `LLM_API_KEY` to the Groq API key and keep `FORTYGUARD_MODE=cached`; `FORTYGUARD_API_KEY` is optional in cached mode.
-- Frontend: import the same repository as a second Vercel project with `frontend/` as its root. Set `NEXT_PUBLIC_API_BASE_URL` to the backend origin, then add the frontend origin to the backend's `CORS_ORIGINS`.
+- Frontend: import the same repository as a second Vercel project with `frontend/` as its root. Set `NEXT_PUBLIC_API_BASE_URL` to the backend origin, then add the frontend origin to the backend's `CORS_ORIGINS`. `/` serves the evidence homepage and `/console` serves the interactive planner.
 - Backend defaults select Groq's Responses endpoint and free-plan `qwen/qwen3.6-27b` model, which supports parallel tool orchestration. If its rate limit is exhausted, the deterministic fallback still returns the official result.
 - Live FortyGuard mode is an explicit demo-only option because it can consume API credits; the public default replays labelled responses from successful real activities.
 - The create endpoint completes within one request. Its in-memory cache is only an acceleration layer; valid job IDs are reconstructed from the deterministic replay if a later request reaches a fresh Vercel instance.
@@ -187,7 +200,7 @@ transmit an operational decision or worker message.
 
 ```text
 backend/     FastAPI, FortyGuard client, models, services, agent, tests
-frontend/    Next.js dashboard, MapLibre/SVG map, timeline, evidence, HUD
+frontend/    Next.js homepage and console, SVG map, timeline, evidence, HUD
 data/        fictional demo inputs, real evidence, validation slice, evaluation
 scripts/     live capability checks and reproducible evaluation
 docs/        architecture, methodology, evaluation, demo, submission copy

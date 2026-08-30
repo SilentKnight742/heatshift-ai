@@ -76,6 +76,49 @@ curl -sS https://heatshift-ai-api.vercel.app/api/validation/heatshield
 curl -sS -X POST https://heatshift-ai-api.vercel.app/api/demo
 ```
 
+### Editable fictional scenario
+
+- `POST /api/analyze` accepts the same site, crew, and shift structure returned
+  by `GET /api/demo/scenario` plus
+  `"environment_source": "phoenix_reference"`.
+- A caller may change the fictional site label, surface, crews, worker counts,
+  acclimatization, PPE, tasks, workloads, locations, timings, dependencies,
+  shade, and movable/fixed flags.
+- This proof of concept deliberately keeps the geography, time window, and
+  environmental evidence tied to the pinned Phoenix replay. The request is
+  processed once and is not stored by the backend.
+
+This dependency-free example changes the fictional worksite name and crew size,
+then submits a custom analysis:
+
+```bash
+python3 - <<'PY'
+import json
+from urllib.request import Request, urlopen
+
+base = "https://heatshift-ai-api.vercel.app"
+with urlopen(f"{base}/api/demo/scenario") as response:
+    scenario = json.load(response)
+
+scenario.pop("fictional_operation", None)
+scenario["environment_source"] = "phoenix_reference"
+scenario["site"]["name"] = "Evaluator fabrication yard"
+scenario["crews"][0]["worker_count"] = 3
+
+request = Request(
+    f"{base}/api/analyze",
+    data=json.dumps(scenario).encode(),
+    headers={"content-type": "application/json"},
+    method="POST",
+)
+with urlopen(request, timeout=150) as response:
+    result = json.load(response)
+
+print(result["site"]["name"])
+print(result["metrics"])
+PY
+```
+
 ### Job-shaped analysis workflow
 
 - `POST /api/analyses` with `{}` returns HTTP 201 and a completed `AnalysisJob`.
@@ -83,8 +126,8 @@ curl -sS -X POST https://heatshift-ai-api.vercel.app/api/demo
   reconstructed from the deterministic replay on a fresh serverless instance,
   so correctness does not rely on shared memory.
 - `POST /api/analyses/{analysis_id}/agent` re-runs the auditable agent briefing.
-- Custom scenario fields are intentionally rejected with HTTP 422 because this
-  release supports exactly one fully validated site and shift.
+- `POST /api/analyses` remains the job-shaped reference-demo route and rejects
+  custom fields. Use `POST /api/analyze` for editable fictional scenarios.
 
 ```bash
 curl -sS -X POST \

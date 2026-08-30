@@ -40,6 +40,29 @@ export interface Task {
   shaded: boolean;
 }
 
+export interface ShiftPlan {
+  shift_id: string;
+  date: string;
+  timezone: string;
+  shift_start: string;
+  shift_end: string;
+  tasks: Task[];
+}
+
+export interface ScenarioPayload {
+  site: Site;
+  crews: Crew[];
+  shift: ShiftPlan;
+  environment_source: "phoenix_reference";
+}
+
+export interface DemoScenario {
+  site: Site;
+  crews: Crew[];
+  shift: ShiftPlan;
+  fictional_operation: boolean;
+}
+
 export interface Observation {
   timestamp: string;
   latitude: number;
@@ -244,6 +267,38 @@ export async function runDemo(signal?: AbortSignal): Promise<AnalysisResult> {
   if (!response.ok) {
     const detail = await response.text();
     throw new Error(`Analysis failed (${response.status}): ${detail}`);
+  }
+  return response.json();
+}
+
+export async function getDemoScenario(signal?: AbortSignal): Promise<DemoScenario> {
+  const response = await fetch(`${API_BASE}/api/demo/scenario`, { signal });
+  if (!response.ok) {
+    const detail = await response.text();
+    throw new Error(`Scenario could not be loaded (${response.status}): ${detail}`);
+  }
+  return response.json();
+}
+
+export async function runScenario(payload: ScenarioPayload, signal?: AbortSignal): Promise<AnalysisResult> {
+  const response = await fetch(`${API_BASE}/api/analyze`, {
+    method: "POST",
+    headers: { "content-type": "application/json" },
+    body: JSON.stringify(payload),
+    signal,
+  });
+  if (!response.ok) {
+    const responseText = await response.text();
+    let detail = responseText;
+    try {
+      const body = JSON.parse(responseText) as { detail?: Array<{ msg?: string; loc?: Array<string | number> }> | string };
+      if (Array.isArray(body.detail)) {
+        detail = body.detail.map((issue) => `${issue.loc?.slice(1).join(" → ") || "scenario"}: ${issue.msg || "invalid value"}`).join("; ");
+      } else if (typeof body.detail === "string") {
+        detail = body.detail;
+      }
+    } catch { /* Preserve the plain-text response. */ }
+    throw new Error(`Scenario analysis failed (${response.status}): ${detail}`);
   }
   return response.json();
 }

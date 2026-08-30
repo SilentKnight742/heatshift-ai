@@ -52,17 +52,53 @@ class ShiftPlan(BaseModel):
     timezone: str
     shift_start: datetime
     shift_end: datetime
-    tasks: list[Task]
+    tasks: list[Task] = Field(min_length=1, max_length=24)
 
     @model_validator(mode="after")
     def validate_tasks(self) -> "ShiftPlan":
+        if self.shift_start.date() != self.date or self.shift_end.date() != self.date:
+            raise ValueError("shift timestamps must match the declared shift date")
+        if self.shift_start >= self.shift_end:
+            raise ValueError("shift_end must be later than shift_start")
         ids = {task.task_id for task in self.tasks}
         if len(ids) != len(self.tasks):
             raise ValueError("task IDs must be unique")
+        task_by_id = {task.task_id: task for task in self.tasks}
         for task in self.tasks:
+            if any(timestamp.date() != self.date for timestamp in (task.scheduled_start, task.earliest_start, task.latest_finish)):
+                raise ValueError(f"task {task.task_id} timestamps must match the shift date")
             if not set(task.dependencies).issubset(ids):
                 raise ValueError(f"unknown dependency for task {task.task_id}")
             if task.scheduled_start < self.shift_start or task.scheduled_end > self.shift_end:
                 raise ValueError(f"task {task.task_id} falls outside the shift")
-        return self
+            for dependency_id in task.dependencies:
+                dependency = task_by_id[dependency_id]
+                if dependency.scheduled_end > task.scheduled_start:
+                    raise ValueError(f"task {task.task_id} starts before dependency {dependency_id} finishes")
 
+        visiting: set[str] = set()
+        visited: set[str] = set()
+
+        def visit(task_id: str) -> None:
+            if task_id in visiting:
+                raise ValueError("task dependencies must not contain a cycle")
+            if task_id in visited:
+                return
+            visiting.add(task_id)
+            for dependency_id in task_by_id[task_id].dependencies:
+                visit(dependency_id)
+            visiting.remove(task_id)
+            visited.add(task_id)
+
+        for task_id in ids:
+            visit(task_id)
+
+        tasks_by_crew: dict[str, list[Task]] = {}
+        for task in self.tasks:
+            tasks_by_crew.setdefault(task.crew_id, []).append(task)
+        for crew_id, crew_tasks in tasks_by_crew.items():
+            ordered = sorted(crew_tasks, key=lambda item: item.scheduled_start)
+            for previous, current in zip(ordered, ordered[1:], strict=False):
+                if previous.scheduled_end > current.scheduled_start:
+                    raise ValueError(f"crew {crew_id} has overlapping baseline tasks")
+        return self

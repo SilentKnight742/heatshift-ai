@@ -69,6 +69,8 @@ function TimelineColumn({ title, subtitle, items, movements, optimized }: {
 export default function ShiftTimeline({ baseline, optimized, movements }: Props) {
   const [showMovements, setShowMovements] = useState(true);
   const movementMap = new Map(movements.map((movement) => [movement.task_id, movement]));
+  const baselineExposure = baseline.reduce((total, item) => total + item.exposed_worker_minutes, 0);
+  const optimizedExposure = optimized.reduce((total, item) => total + item.exposed_worker_minutes, 0);
   return (
     <section className="panel timeline-panel">
       <div className="panel-header">
@@ -84,9 +86,9 @@ export default function ShiftTimeline({ baseline, optimized, movements }: Props)
         </div>
       </div>
       <div className="timeline-layout">
-        <TimelineColumn title="Original shift" subtitle="1,230 exposed worker-minutes" items={baseline} movements={movementMap} optimized={false} />
+        <TimelineColumn title="Original shift" subtitle={`${baselineExposure.toLocaleString()} exposed worker-minutes`} items={baseline} movements={movementMap} optimized={false} />
         <div className="timeline-divider"><span>→</span></div>
-        <TimelineColumn title="HeatShift plan" subtitle="270 exposed worker-minutes" items={optimized} movements={movementMap} optimized />
+        <TimelineColumn title="HeatShift plan" subtitle={`${optimizedExposure.toLocaleString()} exposed worker-minutes`} items={optimized} movements={movementMap} optimized />
       </div>
       <ManagerDecisionBar />
       <button className="movement-toggle" onClick={() => setShowMovements((value) => !value)}>

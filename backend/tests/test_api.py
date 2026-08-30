@@ -53,6 +53,68 @@ def test_analysis_contract_rejects_custom_payload_and_invalid_id() -> None:
     assert missing.status_code == 404
 
 
+def test_custom_scenario_contract_runs_reference_environment() -> None:
+    scenario_response = asyncio.run(request("GET", "/api/demo/scenario"))
+    assert scenario_response.status_code == 200
+    scenario = scenario_response.json()
+    scenario["site"]["name"] = "Custom Phoenix Yard"
+    payload = {
+        "site": scenario["site"],
+        "crews": scenario["crews"],
+        "shift": scenario["shift"],
+        "environment_source": "phoenix_reference",
+    }
+
+    response = asyncio.run(request("POST", "/api/analyze", json=payload))
+
+    assert response.status_code == 200
+    body = response.json()
+    assert body["site"]["name"] == "Custom Phoenix Yard"
+    assert body["metrics"]["exposure_reduction_percent"] == 78.0
+    assert len(body["agent"]["tool_trace"]) == 6
+    assert asyncio.run(analysis_store.get(body["analysis_id"])) is None
+
+
+def test_custom_scenario_rejects_unknown_crew() -> None:
+    scenario = asyncio.run(request("GET", "/api/demo/scenario")).json()
+    scenario["shift"]["tasks"][0]["crew_id"] = "missing"
+    payload = {
+        "site": scenario["site"],
+        "crews": scenario["crews"],
+        "shift": scenario["shift"],
+        "environment_source": "phoenix_reference",
+    }
+
+    response = asyncio.run(request("POST", "/api/analyze", json=payload))
+
+    assert response.status_code == 422
+
+
+def test_custom_scenario_rejects_invalid_footprint_and_overlapping_work() -> None:
+    scenario = asyncio.run(request("GET", "/api/demo/scenario")).json()
+    scenario["site"]["site_id"] = "unrelated-site"
+    payload = {
+        "site": scenario["site"],
+        "crews": scenario["crews"],
+        "shift": scenario["shift"],
+        "environment_source": "phoenix_reference",
+    }
+    footprint_response = asyncio.run(request("POST", "/api/analyze", json=payload))
+    assert footprint_response.status_code == 422
+
+    scenario = asyncio.run(request("GET", "/api/demo/scenario")).json()
+    scenario["shift"]["tasks"][2]["scheduled_start"] = "2026-08-28T06:30:00-07:00"
+    scenario["shift"]["tasks"][2]["earliest_start"] = "2026-08-28T06:00:00-07:00"
+    payload = {
+        "site": scenario["site"],
+        "crews": scenario["crews"],
+        "shift": scenario["shift"],
+        "environment_source": "phoenix_reference",
+    }
+    overlap_response = asyncio.run(request("POST", "/api/analyze", json=payload))
+    assert overlap_response.status_code == 422
+
+
 def test_local_loopback_cors_preflight() -> None:
     response = asyncio.run(
         request(

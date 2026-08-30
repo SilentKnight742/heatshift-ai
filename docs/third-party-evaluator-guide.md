@@ -9,7 +9,8 @@ fictional, how the result is calculated, and exactly what should pass or fail.
 
 The current test targets are the deployed dashboard and backend API:
 
-- Production dashboard: <https://heatshift-ai-zeta.vercel.app>
+- Production homepage: <https://heatshift-ai-zeta.vercel.app>
+- Interactive console: <https://heatshift-ai-zeta.vercel.app/console>
 - Production API: <https://heatshift-ai-api.vercel.app>
 - Interactive Swagger tester: <https://heatshift-ai-api.vercel.app/docs>
 - Machine-readable OpenAPI schema: <https://heatshift-ai-api.vercel.app/openapi.json>
@@ -19,10 +20,11 @@ You need only a web browser for the basic test. `curl`, Git, and Python 3 are
 useful for the deeper tests. You do **not** need a HeatShift account, a GitHub
 account, a Groq key, or a FortyGuard key.
 
-The dashboard is the primary judge-facing product. The API, source, claim oracle,
-and raw evidence remain available for deeper independent verification. The
-dashboard automatically runs the bundled analysis; a first serverless or model
-cold start may take several seconds.
+The homepage is the primary judge-facing product story, and the console is the
+interactive product. The API, source, claim oracle, and raw evidence remain
+available for deeper independent verification. The console automatically runs
+the reference analysis; a first serverless or model cold start may take several
+seconds.
 
 Allow up to 150 seconds for an analysis request before declaring it timed out.
 Most requests are much faster, but the free hosted model and serverless cold
@@ -85,33 +87,36 @@ edits, approves, or rejects the proposal. Approved changes then flow to crew
 supervisors and workers, while unresolved fixed work remains visible for added
 controls or escalation.
 
-The current prototype performs that loop for one bundled scenario. It does not
-yet accept arbitrary customer schedules or send real notifications.
+The current product performs that loop for the bundled reference scenario and
+for browser-created fictional scenarios using the same operational fields. It
+does not yet ingest live customer systems, retain scenarios on a server, or send
+real notifications.
 
 ### What a judge should see on the frontend
 
-A non-technical display should tell the story in this order:
+The public frontend now has two deliberately separate surfaces:
 
-1. **Problem and site context:** where the shift is, when it runs, who is
-   working, and a prominent statement that the bundled operation is fictional.
-2. **Environmental evidence:** a thermal map and hourly heat strip labelled with
-   the real provider, timestamps, saved/live mode, and source activity IDs.
-3. **Baseline operational risk:** the original timeline, highest-priority tasks,
-   factor explanations, and worker-minutes above the product threshold.
-4. **Recommended plan:** a side-by-side or before/after timeline showing exactly
-   what moved, what stayed fixed, and why every movement is permitted.
-5. **Outcome cards:** 1,230 → 270 exposed worker-minutes, 78.0% reduction for the
-   current fictional replay, 100% task time retained, two tasks moved, and
-   residual alerts—not an unsupported “workers saved” number.
-6. **Manager actions:** approve/edit/reject, added controls for fixed work,
-   hydration/recovery and acclimatization reminders, and worker communication.
-7. **Evidence and trust:** policy version, factor arithmetic, source IDs, agent
-   tool trace, limitations, and the distinction between deterministic results
-   and LLM wording.
-8. **Empirical proof-of-concept:** a separate HEAT-SHIELD panel showing 566
-   controlled sessions, 32 participants, 0.7718 rank correlation, and the 36.45
-   percentage-point threshold-group difference with its repeated-measures and
-   non-causal qualifiers.
+1. **Homepage — evidence before demo.** The hero states the operational value,
+   a diagram shows evidence + crew context + constraints flowing into the
+   decision engine, and the empirical section shows 566 HEAT-SHIELD sessions,
+   32 participants, 0.7718 rank correlation, 14.37% versus 50.82% measured
+   one-hour work-capacity loss, and the 36.45-point difference. The nearby copy
+   must preserve the descriptive, non-causal, non-medical boundary.
+2. **Console — build and analyze.** A persistent left panel edits the fictional
+   site, crews, tasks, workload, PPE, acclimatization, timing, dependencies,
+   mobility, shade, and locations. The center shows the complete reference or
+   custom result.
+3. **Environmental evidence.** The console map must render the 198 real
+   FortyGuard GeoJSON cells as SVG in every browser, plus the site boundary,
+   tasks, cooling point, provider label, and hourly heat strip. WebGL is not
+   required.
+4. **Baseline and recommended plan.** The timeline and outcome cards show
+   exactly what moved, what stayed fixed, 1,230 → 270 exposed worker-minutes and
+   78.0% for the reference scenario, 100% task time retained, and residual
+   alerts—not an unsupported “workers saved” number.
+5. **Human review and trust.** Manager choices and HUD controls are explicitly
+   local simulations. The evidence drawer exposes policy version, source IDs,
+   agent trace, guidance, and limitations.
 
 The visual language should say **screening score**, **worker-minutes at or above
 the product threshold**, and **measured physical work-capacity loss**. It should
@@ -138,10 +143,12 @@ procedures. It is a screening and prioritization demonstration.
 
 ## 2. What does HeatShift do?
 
-For one bundled Phoenix-area scenario, the backend:
+For the bundled reference scenario—or an editable fictional operation using the
+same Phoenix reference environment—the backend:
 
 1. Loads a saved response from completed real FortyGuard activities.
-2. Loads a fictional logistics-yard shift with three crews and six tasks.
+2. Loads the reference logistics-yard shift or validates the submitted
+   fictional site, crews, tasks, and constraints.
 3. Calculates a deterministic 0–100 screening score for every task segment.
 4. Counts worker-minutes at or above the configured score threshold of 50.
 5. Searches valid 30-minute start times for the two movable heavy tasks.
@@ -155,7 +162,7 @@ recommendations, worker alerts, provenance, limitations, and agent trace.
 
 ```mermaid
 flowchart LR
-    T[Tester or future dashboard] --> API[FastAPI workflow]
+    T[Homepage and editable console] --> API[FastAPI workflow]
     API --> FG[Saved output from real FortyGuard activities]
     FG --> R[Deterministic risk engine]
     R --> O[Constraint-aware scheduler]
@@ -590,6 +597,7 @@ guidance links.
 | `GET` | `/api/demo/scenario` | 200 | Fictional site, crews, and original shift; no provider or LLM call |
 | `GET` | `/api/validation/heatshield` | 200 | Real-data benchmark, provenance, measured PWC-loss metrics, assumptions, and limitations; no provider or LLM call |
 | `POST` | `/api/demo` | 200 | Complete replay, optimization, recommendations, alerts, and agent trace |
+| `POST` | `/api/analyze` | 200 or 422 | Analyze a validated fictional operation against the pinned Phoenix reference environment; the backend does not retain it |
 | `POST` | `/api/analyses` | 201 | Create and synchronously complete the bundled analysis; body must be empty or `{}` |
 | `GET` | `/api/analyses/{analysis_id}` | 200 or 404 | Retrieve a job; valid UUIDs can be replayed after a cold start |
 | `POST` | `/api/analyses/{analysis_id}/agent` | 200 | Re-run the agent briefing for the deterministic result |
@@ -608,23 +616,32 @@ it is not general-purpose durable job storage.
 ### Dashboard story
 
 1. Open <https://heatshift-ai-zeta.vercel.app> in a fresh browser window.
-2. Confirm the scenario says DesertLine Logistics Yard is fictional and labels
-   the source as FortyGuard saved-real evidence or a live response.
-3. Wait for **Analysis complete**. Confirm the summary shows 1,230 → 270
+2. Confirm the homepage says **Plan the work. Respect the heat.** and shows 566,
+   32, 0.7718, 14.37%, 50.82%, and +36.45 with descriptive/non-causal wording.
+3. Open <https://heatshift-ai-zeta.vercel.app/console>. Confirm the left panel
+   labels custom operations fictional and the environment as the pinned Phoenix
+   FortyGuard reference.
+4. Wait for **Analysis complete**. Confirm the summary shows 1,230 → 270
    exposed worker-minutes, 78.0% reduction, and 100% productive time retained.
-4. Confirm the decision summary says two movable tasks were rescheduled, four
+5. Confirm the decision summary says two movable tasks were rescheduled, four
    fixed tasks were preserved, two residual alerts remain, and 100% of task
    time is retained. It must also say this is not an injury-reduction estimate.
-5. Inspect the before/after timeline. Test all three manager decisions and
+6. Confirm the map says **Universal renderer · real GeoJSON**, shows six task
+   markers, and reports 198 cells. The result must not depend on WebGL.
+7. Change Alpha Crew from four workers to three, run the analysis, and confirm
+   the metrics change to 1,140 → 270 and 76.3%. Restore four workers and confirm
+   the reference returns to 1,230 → 270 and 78.0%.
+8. Inspect the before/after timeline. Test all three manager decisions and
    confirm the page says they are local simulated browser state only.
-6. In the spectacles panel, confirm the badge says **HUD simulation** and the
+9. In the spectacles panel, confirm the badge says **HUD simulation** and the
    alert says **Supervisor action required**. Test its three buttons and confirm
    the status says nothing is transmitted.
-7. Open the evidence drawer. Confirm both FortyGuard activity IDs, six
+10. Open the evidence drawer. Confirm both FortyGuard activity IDs, six
    successful tool calls, policy version, NIOSH links, and limitations are shown.
-8. Open the HEAT-SHIELD section. Confirm 566 sessions, 32 participants, 0.7718,
-   14.37% versus 50.82%, and 36.45 percentage points. Expand all five
-   limitations and test the dataset, DOI, and CC BY 4.0 links.
+11. Create a new scenario. Confirm it starts with one editable crew and one
+    editable task; add a crew and task, export the JSON, and verify the file can
+    be imported. Editing must clear the old result until **Run analysis** is
+    pressed. Refresh and confirm the latest scenario persists in that browser.
 
 Repeat at a mobile width. Pass if cards stack, the timeline alone scrolls
 horizontally, controls remain usable, and the page itself has no horizontal
@@ -643,6 +660,9 @@ overflow.
 6. Expand `POST /api/demo` and execute it. It needs no request body.
 7. In the response, search for `metrics`, `movements`, `data_provenance`, and
    `tool_trace` and compare them with the expected values below.
+8. Use the custom-scenario example in [api-testing.md](api-testing.md) to call
+   `POST /api/analyze`; confirm the edited fictional name and crew size affect
+   the returned result.
 
 This is enough for a product-level first pass, but not for a thorough technical
 acceptance.
@@ -723,7 +743,7 @@ Pass:
 
 Open `/docs` and `/openapi.json`.
 
-Pass: Swagger loads, and the schema contains all seven HeatShift paths listed in
+Pass: Swagger loads, and the schema contains all eight HeatShift paths listed in
 the service catalog, in addition to documentation/root behavior.
 
 ### B. Scenario integrity
@@ -871,17 +891,27 @@ bundled completed replay. This confirms the documented stateless recovery path.
 
 ### E. Validation and negative behavior
 
-**HS-17 — Reject unsupported custom scenarios**
+**HS-17 — Analyze an editable fictional scenario**
+
+Run the dependency-free custom-scenario example in
+[api-testing.md](api-testing.md).
+
+Pass: HTTP 200; the returned site name matches the submitted fictional name;
+the changed crew size changes worker-weighted exposure; constraints, official
+metric fields, provenance, and six-tool trace remain present; and the
+FortyGuard activity IDs remain the pinned Phoenix reference IDs.
+
+**HS-17A — Reject a malformed custom scenario**
 
 ```bash
 curl -i -X POST \
   -H 'content-type: application/json' \
   -d '{"site":{"site_id":"unsupported"}}' \
-  https://heatshift-ai-api.vercel.app/api/analyses
+  https://heatshift-ai-api.vercel.app/api/analyze
 ```
 
-Pass: HTTP 422. The narrow release accepts only an empty object; it must not
-silently pretend to analyze custom user input.
+Pass: HTTP 422 with a structured validation response. The service must not
+silently fill missing site, crew, shift, or task data.
 
 **HS-18 — Reject an invalid analysis ID**
 
@@ -955,7 +985,7 @@ quota should be reported separately from the deterministic backend result.
 
 **HS-24 — Analysis, result boundary, and decision summary**
 
-Open the dashboard and wait for completion.
+Open `/console` and wait for completion.
 
 Pass: the six primary metrics match section 13; the four decision-summary facts
 are 2 moved, 4 fixed, 2 residual alerts, and 100% retained; the nearby copy says
@@ -977,27 +1007,27 @@ Pass: the UI says HUD simulation, supervisor action required, local demo state,
 and nothing transmitted. No physical device, notification, assistance request,
 or supervisor message is claimed.
 
-**HS-27 — Evidence and empirical validation**
+**HS-27 — Evidence homepage and analysis provenance**
 
-Pass: the drawer exposes both activity IDs, six tools, deterministic policy,
-guidance, and limitations. The separate HEAT-SHIELD panel matches HS-05A,
-preserves all four study qualifiers, links to the source/DOI/license, and expands
-five limitations.
+Pass: the homepage matches HS-05A's headline sample and metric values, links to
+the public source, and preserves descriptive/non-causal qualifiers. In the
+console, the evidence drawer exposes both activity IDs, six tools,
+deterministic policy, guidance, and limitations.
 
 **HS-28 — Responsive and failure-tolerant display**
 
 Pass: desktop and mobile layouts are readable without page-level horizontal
 overflow; the schedule remains intentionally scrollable on a narrow display;
-the analysis and validation surfaces expose independent loading/error/retry
-states; and the deterministic result remains usable if the map falls back.
+the analysis surface exposes clear loading, validation, and error states; and
+the SVG map renders the real GeoJSON without a WebGL fallback path.
 
 ## 15. Complete automated public acceptance test
 
-The repository includes a dependency-free Python script that executes 14 public
+The repository includes a dependency-free Python script that executes 15 public
 checks covering root, health, schema, docs, scenario, CORS, complete demo, job
-creation, retrieval, cold recovery, agent rerun, custom-input rejection, invalid
-IDs, the real-data benchmark, deterministic metrics, tool traces, and basic
-secret scanning.
+creation, retrieval, cold recovery, agent rerun, a successful editable scenario,
+malformed-input rejection, invalid IDs, the real-data benchmark, deterministic
+metrics, tool traces, and basic secret scanning.
 
 ```bash
 git clone https://github.com/SilentKnight742/heatshift-ai.git
@@ -1011,7 +1041,7 @@ Expected final output starts with:
 {
   "status": "passed",
   "base_url": "https://heatshift-ai-api.vercel.app",
-  "checks": 14
+  "checks": 15
 }
 ```
 
@@ -1087,20 +1117,21 @@ offline and public acceptance suites.
 
 ### Current status
 
-The current build is a completed, deployed hackathon vertical slice rather than
-a general customer platform. It proves one end-to-end decision loop with enough
-depth to audit:
+The current build is a deployed product proof of concept rather than a general
+customer platform. It proves one end-to-end decision loop and lets an evaluator
+exercise the same loop with editable fictional inputs:
 
 - the Next.js manager dashboard, FastAPI backend, and interactive OpenAPI
   documentation are public on Vercel;
-- the fixed Phoenix scenario, environmental normalization, policy scoring,
+- the reference Phoenix scenario, editable browser-local fictional scenarios,
+  environmental normalization, policy scoring,
   constraint-aware scheduling, recommendations, alerts, LLM/fallback agent, and
   serverless recovery paths are implemented;
 - the separate HEAT-SHIELD aggregate endpoint provides real measured-outcome
   evidence for the screening policy;
-- the dashboard presents the map, main metrics, decision summary, before/after
-  schedule, simulated manager and worker controls, agent briefing, evidence
-  drawer, and HEAT-SHIELD validation; and
+- the homepage presents the empirical HEAT-SHIELD proof and the console presents
+  the universal SVG map, main metrics, decision summary, before/after schedule,
+  simulated manager and worker controls, agent briefing, and evidence drawer; and
 - normal tests, an independent standard-library claim oracle, local HTTP smoke
   tests, GitHub Actions, and public black-box audits pass.
 
@@ -1113,7 +1144,9 @@ operational safety system.
 The current build does not provide:
 
 - user authentication, organizations, or role-based access;
-- arbitrary sites, crews, dates, or uploaded schedules;
+- independent environmental sites, dates, time zones, live customer schedule
+  integrations, or a durable multi-scenario library (fictional site/crew/task
+  editing and JSON import/export are available now);
 - end-user “bring your own LLM key” storage;
 - a database, durable job history, queue, or multi-instance shared state;
 - live production FortyGuard calls by default;
@@ -1132,13 +1165,14 @@ intentionally excluded from this unauthenticated zero-cost slice.
 
 ### Current frontend boundary
 
-The public dashboard is a polished single-scenario decision interface following
-the eight-part display sequence in the judge overview. Its map and schedule make
-the operational change visible; its decision summary keeps fixed work and
-residual alerts visible; and its evidence drawer and HEAT-SHIELD panel keep
-provenance and empirical evidence close to the result. Manager decisions and
-worker buttons deliberately reset with the browser and do not call an approval,
-notification, or wearable service.
+The public frontend has an evidence-led homepage and a separate operational
+console. The homepage deliberately contains no fictional worker or crew counts.
+The console opens with the reference scenario, then allows one current
+browser-local scenario to be created or edited and exchanged as JSON. Its SVG
+map and schedule make the operational change visible; its decision summary keeps
+fixed work and residual alerts visible; and its evidence drawer keeps provenance
+close to the result. Manager decisions and worker buttons deliberately reset
+with the browser and do not call an approval, notification, or wearable service.
 
 ### Path from prototype to pilot
 

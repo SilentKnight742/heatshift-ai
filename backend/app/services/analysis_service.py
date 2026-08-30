@@ -16,7 +16,9 @@ from ..models.analysis import (
 )
 from ..models.crew import Crew
 from ..models.site import GeoPoint, Site
+from ..models.scenario import ScenarioAnalysisRequest
 from ..models.task import ShiftPlan
+from ..models.weather import EnvironmentalObservation
 from .cache import AnalysisStore, analysis_store
 from .risk_engine import RiskEngine
 from .schedule_optimizer import ScheduleOptimizer
@@ -57,38 +59,71 @@ class AnalysisService:
         return analysis_id
 
     async def run_demo(self, analysis_id: str | None = None) -> AnalysisResult:
+        site, crews, shift = self.load_demo_scenario()
+        return await self._run_operation(site, crews, shift, analysis_id, persist=True)
+
+    async def run_scenario(
+        self,
+        request: ScenarioAnalysisRequest,
+        analysis_id: str | None = None,
+    ) -> AnalysisResult:
+        return await self._run_operation(
+            request.site,
+            request.crews,
+            request.shift,
+            analysis_id,
+            persist=False,
+        )
+
+    async def _run_operation(
+        self,
+        site: Site,
+        crews: list[Crew],
+        shift: ShiftPlan,
+        analysis_id: str | None = None,
+        *,
+        persist: bool,
+    ) -> AnalysisResult:
         analysis_id = analysis_id or str(uuid.uuid4())
-        if await self.store.get(analysis_id) is None:
-            await self.store.create(analysis_id)
+        created_at = datetime.now(timezone.utc)
+        if persist:
+            if await self.store.get(analysis_id) is None:
+                stored = await self.store.create(analysis_id)
+            else:
+                stored = await self.store.get(analysis_id)
+            created_at = stored.created_at  # type: ignore[union-attr]
         try:
-            await self.store.update_status(analysis_id, AnalysisStatus.FETCHING_HEAT)
-            site, crews, shift = self.load_demo_scenario()
+            if persist:
+                await self.store.update_status(analysis_id, AnalysisStatus.FETCHING_HEAT)
             heat = await self.fortyguard.get_heat_forecast()
+            observations = self._align_observations(heat.observations, shift)
             crew_by_id = {crew.crew_id: crew for crew in crews}
 
-            await self.store.update_status(analysis_id, AnalysisStatus.CALCULATING_RISK)
+            if persist:
+                await self.store.update_status(analysis_id, AnalysisStatus.CALCULATING_RISK)
             baseline = self.risk_engine.assess_schedule(
-                shift.tasks, crew_by_id, heat.observations
+                shift.tasks, crew_by_id, observations
             )
 
-            await self.store.update_status(analysis_id, AnalysisStatus.OPTIMIZING)
+            if persist:
+                await self.store.update_status(analysis_id, AnalysisStatus.OPTIMIZING)
             optimized_tasks, optimized, movements = self.optimizer.optimize(
-                shift.tasks, crew_by_id, heat.observations
+                shift.tasks, crew_by_id, observations
             )
-            metrics = self._metrics(heat.temperature_stats, heat.observations, baseline, optimized, movements)
+            metrics = self._metrics(heat.temperature_stats, observations, baseline, optimized, movements)
             recommendations = self._recommendations(movements, optimized, crews)
             alerts = self._alerts(optimized)
             now = datetime.now(timezone.utc)
             result = AnalysisResult(
                 analysis_id=analysis_id,
                 status=AnalysisStatus.COMPLETED,
-                created_at=(await self.store.get(analysis_id)).created_at,  # type: ignore[union-attr]
+                created_at=created_at,
                 completed_at=now,
                 site=site,
                 crews=crews,
                 tasks=optimized_tasks,
                 heatmap_geojson=heat.heatmap_geojson,
-                observations=heat.observations,
+                observations=observations,
                 baseline_schedule=baseline,
                 optimized_schedule=optimized,
                 movements=movements,
@@ -101,14 +136,33 @@ class AnalysisService:
                     "HeatShift provides screening-level decision support using ambient and environmental data.",
                     "It does not replace an on-site WBGT meter or a qualified safety professional.",
                     "Risk bands are product screening bands, not medical diagnoses or regulatory exposure limits.",
-                    "The Phoenix crews, company, and work plan are fictional; FortyGuard data and activity IDs are real.",
+                    "All site, crew, and task operational inputs are fictional in this build; FortyGuard data and activity IDs are real.",
                 ],
             )
-            await self.store.complete(analysis_id, result)
+            if persist:
+                await self.store.complete(analysis_id, result)
             return result
         except Exception as exc:
-            await self.store.fail(analysis_id, str(exc))
+            if persist:
+                await self.store.fail(analysis_id, str(exc))
             raise
+
+    @staticmethod
+    def _align_observations(
+        observations: list[EnvironmentalObservation],
+        shift: ShiftPlan,
+    ) -> list[EnvironmentalObservation]:
+        """Preserve the measured hourly profile while aligning it to the scenario date."""
+        aligned: list[EnvironmentalObservation] = []
+        for observation in observations:
+            timestamp = shift.shift_start.replace(
+                hour=observation.timestamp.hour,
+                minute=observation.timestamp.minute,
+                second=observation.timestamp.second,
+                microsecond=observation.timestamp.microsecond,
+            )
+            aligned.append(observation.model_copy(update={"timestamp": timestamp}))
+        return aligned
 
     @staticmethod
     def _metrics(
@@ -214,4 +268,3 @@ class AnalysisService:
                 )
             )
         return alerts
-

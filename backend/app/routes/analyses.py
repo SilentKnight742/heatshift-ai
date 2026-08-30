@@ -7,6 +7,7 @@ from pydantic import BaseModel, ConfigDict
 
 from ..agent.runner import AgentRunner
 from ..models.analysis import AnalysisJob, AnalysisResult
+from ..models.scenario import ScenarioAnalysisRequest
 from ..services.analysis_service import AnalysisService
 from ..services.cache import analysis_store
 
@@ -81,6 +82,14 @@ async def run_demo() -> AnalysisResult:
     result = await service.run_demo()
     result.agent = await agent_runner.run(result)
     await analysis_store.complete(result.analysis_id, result)
+    return result
+
+
+@router.post("/analyze", response_model=AnalysisResult)
+async def analyze_scenario(request: ScenarioAnalysisRequest) -> AnalysisResult:
+    """Analyze a validated fictional operation against the pinned Phoenix replay."""
+    result = await service.run_scenario(request)
+    result.agent = await agent_runner.run(result)
     return result
 
 

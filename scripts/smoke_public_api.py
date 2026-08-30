@@ -89,6 +89,7 @@ def main() -> None:
     )
     args = parser.parse_args()
     base_url = args.base_url.rstrip("/")
+    production_url = "https://heatshift-ai-api.vercel.app"
     timings: dict[str, float] = {}
 
     status, _, root, timings["root"] = json_request(base_url, "GET", "/")
@@ -98,7 +99,8 @@ def main() -> None:
     assert status == 200 and health["status"] == "ok"
     assert health["fortyguard"]["mode"] == "cached"
     assert health["fortyguard"]["cached_real_response_available"] is True
-    assert health["llm"]["configured"] is True
+    if base_url == production_url or args.require_llm:
+        assert health["llm"]["configured"] is True
     assert health["deployment"]["stateless_replay_recovery"] is True
     assert health["empirical_validation"]["available"] is True
     assert health["empirical_validation"]["requires_external_api"] is False
@@ -108,6 +110,7 @@ def main() -> None:
     expected_paths = {
         "/health",
         "/api/demo",
+        "/api/analyze",
         "/api/demo/scenario",
         "/api/analyses",
         "/api/analyses/{analysis_id}",
@@ -141,10 +144,10 @@ def main() -> None:
     assert validation["metrics"]["mean_loss_difference_percentage_points"] == 36.45
 
     cors_elapsed = 0.0
-    for allowed_origin in (
-        "https://heatshift-ai-zeta.vercel.app",
-        "http://localhost:3000",
-    ):
+    allowed_origins = ["http://localhost:3000"]
+    if base_url == production_url:
+        allowed_origins.insert(0, "https://heatshift-ai-zeta.vercel.app")
+    for allowed_origin in allowed_origins:
         status, cors_headers, _, elapsed = request(
             base_url,
             "OPTIONS",
@@ -176,6 +179,24 @@ def main() -> None:
     assert status == 200
     validate_result(demo, args.require_llm)
 
+    custom_scenario = json.loads(json.dumps(scenario))
+    custom_scenario.pop("fictional_operation", None)
+    custom_scenario["environment_source"] = "phoenix_reference"
+    custom_scenario["site"]["name"] = "Smoke-test fabrication yard"
+    custom_scenario["crews"][0]["worker_count"] = 3
+    status, _, custom_result, timings["custom_analysis"] = json_request(
+        base_url, "POST", "/api/analyze", payload=custom_scenario
+    )
+    assert status == 200
+    assert custom_result["site"]["name"] == "Smoke-test fabrication yard"
+    assert custom_result["metrics"]["baseline_exposed_worker_minutes"] == 1140
+    assert custom_result["metrics"]["optimized_exposed_worker_minutes"] == 270
+    assert custom_result["metrics"]["exposure_reduction_percent"] == 76.3
+    assert len(custom_result["heatmap_geojson"]["features"]) == 198
+    assert len(custom_result["observations"]) == 11
+    assert [trace["tool"] for trace in custom_result["agent"]["tool_trace"]] == EXPECTED_TOOLS
+    assert all(trace["success"] for trace in custom_result["agent"]["tool_trace"])
+
     status, _, job, timings["create_job"] = json_request(
         base_url, "POST", "/api/analyses", payload={}
     )
@@ -205,7 +226,7 @@ def main() -> None:
     status, _, _, timings["reject_custom"] = json_request(
         base_url,
         "POST",
-        "/api/analyses",
+        "/api/analyze",
         payload={"site": {"site_id": "unsupported"}},
     )
     assert status == 422
@@ -216,7 +237,7 @@ def main() -> None:
     assert status == 404
 
     public_payload = json.dumps(
-        [root, health, scenario, validation, demo, job, fetched, cold_replay, rerun]
+        [root, health, scenario, validation, demo, custom_result, job, fetched, cold_replay, rerun]
     )
     assert "gsk_" not in public_payload
     assert "Bearer " not in public_payload
@@ -229,7 +250,7 @@ def main() -> None:
                 "demo_agent_mode": demo["agent"]["mode"],
                 "job_agent_mode": job["result"]["agent"]["mode"],
                 "rerun_agent_mode": rerun["agent"]["mode"],
-                "checks": 14,
+                "checks": 15,
                 "timings_seconds": timings,
             },
             indent=2,

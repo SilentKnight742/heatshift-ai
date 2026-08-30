@@ -30,7 +30,7 @@ class AgentToolbox:
     def definitions(self) -> list[dict]:
         descriptions = {
             "get_site_heat": "Retrieve normalized FortyGuard heat evidence and provenance.",
-            "load_shift_plan": "Load the selected site's fictional crews and six-task shift.",
+            "load_shift_plan": "Load the selected site's fictional crews and task schedule.",
             "calculate_exposure_risk": "Read deterministic screening risk and exposure metrics.",
             "optimize_shift": "Read the constraint-checked before/after shift optimization.",
             "get_policy_guidance": "Retrieve curated official NIOSH heat-stress guidance links.",
@@ -116,4 +116,3 @@ class AgentToolbox:
 
     async def create_worker_alerts(self, analysis: AnalysisResult, _: AnalysisToolArguments) -> dict:
         return {"alerts": [alert.model_dump(mode="json") for alert in analysis.worker_alerts]}
-

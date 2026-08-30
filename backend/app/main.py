@@ -33,5 +33,6 @@ async def root() -> dict:
         "docs": "/docs",
         "health": "/health",
         "demo": "POST /api/demo",
+        "custom_analysis": "POST /api/analyze",
         "empirical_validation": "/api/validation/heatshield",
     }
