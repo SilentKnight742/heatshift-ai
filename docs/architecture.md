@@ -36,6 +36,11 @@ sequenceDiagram
 | Agent | Call validated tools, preserve model outputs, explain deterministic evidence | Calculate or alter the official score, invent a tool result |
 | Frontend | Present the empirical homepage; store editable fictional scenarios locally; submit validated scenario JSON; present provenance, evidence, limitations, and local HUD interactions | Receive or expose server API keys; claim browser-local state is a durable audit record |
 
+The visible agent card is intentionally downstream of the official result. It
+shows the execution mode and successful tool count, places the explanation in a
+larger dedicated reading surface, and states that deterministic fields—not the
+LLM prose—are authoritative.
+
 ## Failure behavior
 
 1. Live FortyGuard is attempted only when `FORTYGUARD_MODE=live`.
@@ -52,3 +57,6 @@ complete result but does not retain the request. The console persists the latest
 scenario in that browser's local storage and supports JSON import/export. The
 legacy job-shaped demo workflow has an in-memory acceleration cache and can
 reconstruct valid IDs from the deterministic reference replay after a cold start.
+
+The complete regression layers and browser-local CRUD boundary are documented
+in [testing.md](testing.md).

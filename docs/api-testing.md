@@ -152,3 +152,6 @@ curl -sS -X POST \
 
 The values are screening-level decision support for a fictional operation. They
 are not medical diagnoses, measured workplace WBGT, or regulatory exposure limits.
+
+For source-level API validation, difficult scenario cases, frontend component
+tests, and full local browser journeys, see [the product testing guide](testing.md).

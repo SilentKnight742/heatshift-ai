@@ -45,7 +45,8 @@ activity IDs are real.
   recommendations, evidence drawer, and interactive spectacles HUD.
 - Evidence-led public homepage with HEAT-SHIELD metrics, comparison chart,
   source link, interpretation, and prominent non-causal limitations.
-- Three-replay offline evaluation and automated backend/frontend checks.
+- Three-replay offline evaluation plus backend, frontend component, browser-local
+  workflow, and desktop/mobile end-to-end regression suites.
 - Reproducible CC BY 4.0 human-trial benchmark with integrity hashes and public metrics API.
 
 ## Quick start
@@ -152,8 +153,19 @@ NIOSH guidance links are curated tool outputs, including [workplace recommendati
 python3 -m pytest backend/tests -q
 python3 scripts/run_claim_evaluation.py
 python3 scripts/generate_evaluation.py
-cd frontend && npm run lint && npm run build
+cd frontend
+npm run lint
+npm run test:unit
+npm run test:e2e
+npm run build
 ```
+
+The current local baseline is 67 backend passes plus one intentional
+LLM-prose expected failure, 32 frontend unit/component passes, and 9 browser
+journey passes with one desktop copy of a mobile-only check intentionally
+skipped. The harder scenario matrix includes fixed work, dense same-crew work,
+dependency chains, critical residual exposure, invalid inputs, and stateless
+repeatability. See [the testing guide](docs/testing.md).
 
 The normal suite never calls FortyGuard. Live contract scripts are separate because completed activities consume credits:
 

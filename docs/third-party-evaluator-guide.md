@@ -116,7 +116,9 @@ The public frontend now has two deliberately separate surfaces:
    alerts—not an unsupported “workers saved” number.
 5. **Human review and trust.** Manager choices and HUD controls are explicitly
    local simulations. The evidence drawer exposes policy version, source IDs,
-   agent trace, guidance, and limitations.
+   agent trace, guidance, and limitations. The prominent **What the AI
+   recommends** card identifies the execution mode and states that the AI only
+   explains the validated deterministic result.
 
 The visual language should say **screening score**, **worker-minutes at or above
 the product threshold**, and **measured physical work-capacity loss**. It should
@@ -1084,15 +1086,35 @@ python3 scripts/run_claim_evaluation.py
 python3 scripts/generate_evaluation.py
 ```
 
-Current baseline: 50 tests pass and one intentional expected failure documents
-the known LLM narrative-grounding gap. The offline independent audit reports 26
+Current baseline: 67 backend tests pass and one intentional expected failure
+documents the known LLM narrative-grounding gap. In addition, 32 frontend
+unit/component/workspace tests pass, and the Chromium product suite reports 9
+desktop/mobile browser journeys passed with one expected project skip for the
+desktop copy of a mobile-only overflow assertion. The offline independent audit reports 26
 passes, zero failures, one external FortyGuard-provenance check unverified, and
 one threshold-sensitivity observation. The combined three-repetition public
 audit reports 67 passes and zero failures. Coverage includes normalization,
 missing values, scoring, clamping, optimizer constraints, API behavior, agent
-failure paths, HEAT-SHIELD metrics and mutations, and offline integration. The
+failure paths, HEAT-SHIELD metrics and mutations, scenario creation and
+browser-local persistence, the universal SVG renderer, component semantics,
+difficult schedule topologies, and real local browser integration. The
 evaluation generator reproduces the scenario rows and the 3,690 → 810 aggregate
 result; its `generated_at` timestamp will naturally change.
+
+Run the current frontend layers from `frontend/`:
+
+```bash
+npm ci
+npm run lint
+npm run test:unit
+npm run test:e2e
+npm run build
+```
+
+The difficult scenario matrix includes all-fixed work, three heavy tasks
+competing for one crew's cooler slots, a dependency chain, and fixed critical
+work for a new high-PPE-burden crew. See [testing.md](testing.md) for exact
+invariants, ownership, and the browser-local CRUD boundary.
 
 Important source files for an independent audit:
 
@@ -1107,6 +1129,7 @@ Important source files for an independent audit:
 - [HEAT-SHIELD provenance](../data/validation/heatshield_provenance.json)
 - [real-data research and metrics](real-data-validation.md)
 - [public smoke contract](../scripts/smoke_public_api.py)
+- [product regression design](testing.md)
 - [screening methodology](methodology.md)
 
 Do not enable live FortyGuard merely to test the normal build. Live activity
@@ -1133,7 +1156,8 @@ exercise the same loop with editable fictional inputs:
   the universal SVG map, main metrics, decision summary, before/after schedule,
   simulated manager and worker controls, agent briefing, and evidence drawer; and
 - normal tests, an independent standard-library claim oracle, local HTTP smoke
-  tests, GitHub Actions, and public black-box audits pass.
+  tests, frontend unit/component tests, desktop/mobile browser journeys, GitHub
+  Actions, and public black-box audits pass.
 
 This level is appropriate for a hackathon proof of concept: it demonstrates the
 technical and product thesis honestly, but it is not presented as a commercially
@@ -1343,6 +1367,11 @@ The deployment uses Vercel's free Hobby tier, saved real FortyGuard responses,
 and Groq's free-plan model with deterministic fallback. There is no paid Render
 service, database, custom domain, or paid monitoring dependency in the current
 demo stack. See the [zero-cost deployment policy](zero-cost-stack.md).
+
+The August 31, 2026 source baseline is 67 backend passes plus one intentional
+LLM-prose expected failure, 32 frontend unit/component passes, 9 Chromium
+journey passes, strict TypeScript, and a successful production build. Exact
+commands and scenario coverage are in [testing.md](testing.md).
 
 For more detail, read the [architecture](architecture.md),
 [methodology](methodology.md), [evaluation](evaluation.md), and

@@ -10,7 +10,7 @@ subscription, payment method, custom domain, or usage-based overage bill.
 | Frontend | Vercel Hobby Next.js deployment | Uses the included `vercel.app` domain and HTTPS. |
 | LLM | Groq free plan, `qwen/qwen3.6-27b` | Rate-limited; deterministic analysis remains available when the LLM is unavailable. |
 | Heat evidence | Saved responses from successful real FortyGuard activities | Production defaults to `FORTYGUARD_MODE=cached`, so ordinary demos consume no API credits. |
-| Map | MapLibre plus OpenStreetMap public tiles | No API key; retain the built-in SVG fallback and keep traffic at demo scale. |
+| Map | In-product SVG renderer for provider GeoJSON | No API key, WebGL, external tile server, or map billing dependency. |
 | Storage | Bundled JSON plus ephemeral in-memory state | No hosted database or durable user data. |
 | Monitoring | Vercel's included runtime logs | No paid observability service. |
 | Domain and TLS | Generated `vercel.app` domains | No domain purchase or certificate charge. |

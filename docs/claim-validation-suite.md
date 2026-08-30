@@ -119,10 +119,14 @@ sensitivity without treating a disclosed product choice as a defect.
 
 ## Current observed result
 
-On August 30, 2026, after adding the empirical benchmark, the suite observed:
+On August 31, 2026, after adding the editable product and its new regression
+matrix, the project observed:
 
-- 50 ordinary/adversarial tests passing plus one expected failure for unchecked
+- 67 backend ordinary/adversarial tests passing plus one expected failure for unchecked
   LLM narrative contradiction;
+- 32 frontend unit/component/workspace tests passing and 9 desktop/mobile
+  browser journeys passing, with one expected project skip for a mobile-only
+  assertion's desktop copy;
 - 26 offline claim checks passing, zero failing, one external-provenance check
   unverified, and one sensitivity observation;
 - 67 combined offline/public checks passing and zero failing across three
