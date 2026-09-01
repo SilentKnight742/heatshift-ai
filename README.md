@@ -112,6 +112,7 @@ SUPABASE_JWKS_URL
 TURNSTILE_SECRET_KEY
 FORTYGUARD_API_KEY
 GROQ_API_KEY or LLM_API_KEY
+LLM_REASONING_EFFORT=none
 FORTYGUARD_CREDIT_RESERVE=200000
 FORTYGUARD_SITE_WEEK_ESTIMATE=64240
 HEATSHIFT_LOCAL_AUTH=false
@@ -155,7 +156,7 @@ npm run test:e2e
 npm run build
 ```
 
-Current deterministic baseline: **105 backend tests pass with zero expected failures** and **15 focused frontend unit/component tests pass**. Frontend coverage includes anonymous-session concurrency, weekly drawing, Markdown safety, state data, briefing presentation, and map fallback. Cross-browser journeys target Chromium, Firefox, WebKit, and mobile Chromium. See [docs/testing.md](docs/testing.md).
+Current deterministic baseline: **106 backend tests pass with zero expected failures** and **15 focused frontend unit/component tests pass**. Frontend coverage includes anonymous-session concurrency, weekly drawing, Markdown safety, state data, briefing presentation, and map fallback. Cross-browser journeys target Chromium, Firefox, WebKit, and mobile Chromium. See [docs/testing.md](docs/testing.md).
 
 ## Safety boundary
 

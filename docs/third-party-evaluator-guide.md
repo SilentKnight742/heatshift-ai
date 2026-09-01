@@ -134,7 +134,7 @@ npm run test:e2e
 npm run build
 ```
 
-Expected deterministic baseline: 105 backend passes and zero expected failures; 15 focused frontend unit/component passes; clean type check and production build. Browser E2E is configured for Chromium, Firefox, WebKit and mobile Chromium.
+Expected deterministic baseline: 106 backend passes and zero expected failures; 15 focused frontend unit/component passes; clean type check and production build. Browser E2E is configured for Chromium, Firefox, WebKit and mobile Chromium.
 
 The provider-verification tier is separate. A checked-in response plus an activity ID cannot prove its own origin; use authorized read-only status verification if independent provider authentication is required. All curated hashes and 75 completed activity IDs are pinned in `claim_evaluation/evidence_manifest.json`; with the six legacy replay IDs, the optional command verifies 81 completed activities. Two additional IDs are explicitly recorded as abandoned after remaining indefinitely in `Processing` and are not used as evidence inputs.
 

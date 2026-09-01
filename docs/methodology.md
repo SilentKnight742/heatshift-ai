@@ -70,7 +70,7 @@ Hard constraints preserve fixed, completed and in-progress work; exact duration;
 
 ## AI authority
 
-Groq receives the completed deterministic result and may write four short Markdown sections: Decision, Why, Next actions, and Still exposed. Numeric values are allowlisted. Unsupported numbers, missing required sections, material contradictions, or out-of-range length discard the model response and select the deterministic briefing.
+Groq receives the completed deterministic result and may write four short Markdown sections: Decision, Why, Next actions, and Still exposed. Qwen 3.6 runs with reasoning effort `none` because this is a concise explanation task and the free-tier output budget must remain available for the final answer. Numeric values are allowlisted. Unsupported numbers, missing required sections, material contradictions, or out-of-range length discard the model response and select the deterministic briefing.
 
 Contextual Q&A receives one authoritative selected site/job/crew/metric/plan context and a question up to 500 characters. It may explain facts but cannot mutate anything. Twenty model answers per anonymous user/day are permitted; deterministic inspector explanations are unlimited and Q&A history stays in browser session storage.
 

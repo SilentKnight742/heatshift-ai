@@ -33,7 +33,11 @@ class Settings:
     llm_base_url: str = os.getenv("LLM_BASE_URL", "https://api.groq.com/openai/v1")
     llm_api_key: str | None = _resolve_llm_api_key()
     llm_model: str | None = os.getenv("LLM_MODEL", "qwen/qwen3.6-27b")
-    llm_reasoning_effort: str = os.getenv("LLM_REASONING_EFFORT", "")
+    # Qwen 3.6 defaults to reasoning mode, which can spend a small free-tier
+    # output budget before emitting a user-visible answer. Operational
+    # explanations are concise retrieval tasks, so non-thinking mode is the
+    # safe default. Other providers can override this explicitly.
+    llm_reasoning_effort: str = os.getenv("LLM_REASONING_EFFORT", "none")
     llm_max_output_tokens: int = int(os.getenv("LLM_MAX_OUTPUT_TOKENS", "1536"))
     supabase_url: str | None = os.getenv("SUPABASE_URL")
     supabase_publishable_key: str | None = os.getenv("SUPABASE_PUBLISHABLE_KEY")

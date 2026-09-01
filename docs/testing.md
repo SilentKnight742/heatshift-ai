@@ -4,7 +4,7 @@
 
 | Layer | Current result | Scope |
 |---|---:|---|
-| Backend | 105 passed, 0 expected failures | Auth, ownership, CRUD, geometry, quota, provisioning, provider normalization/cache, metrics, optimizer, AI grounding, compatibility APIs and claim evaluation |
+| Backend | 106 passed, 0 expected failures | Auth, ownership, CRUD, geometry, quota, provisioning, provider normalization/cache, metrics, optimizer, AI grounding/provider configuration, compatibility APIs and claim evaluation |
 | Frontend unit/component | 15 passed | API client and anonymous-session concurrency, briefing presentation, weekly Markdown safety, state-map drawing and forced SVG fallback |
 | TypeScript | Passed | Full frontend type check |
 | Production build | Passed | Next.js static homepage and console |
