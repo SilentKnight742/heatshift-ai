@@ -1,57 +1,72 @@
 # HeatShift AI
 
-**Operational heat decisions—not another weather map.**
+HeatShift turns historical heat evidence, jobs, crews, and operating constraints into a workable seven-day schedule. It is built for operations and HSE managers who need to decide what can move, what cannot move, which crew carries the most cumulative exposure, and what risk remains after a schedule change.
 
-HeatShift AI is an evidence-led industrial heat planning product for HSE managers and operations planners. Its public homepage explains the measured HEAT-SHIELD benchmark; its separate console combines real, pinned FortyGuard environmental evidence with an editable fictional operation, calculates deterministic screening-level worker heat risk, moves flexible work into cooler valid windows, and keeps the remaining risk visible.
+- Product: <https://heatshift-ai-zeta.vercel.app>
+- API: <https://heatshift-ai-api.vercel.app>
+- Independent test guide: [docs/third-party-evaluator-guide.md](docs/third-party-evaluator-guide.md)
 
-Primary submission track: **Industrial & Enterprise**. Agentic tool execution is the technical differentiator; the official safety calculations never depend on an LLM.
+## Product workflow
 
-- **Live dashboard:** <https://heatshift-ai-zeta.vercel.app>
-- **Public API:** <https://heatshift-ai-api.vercel.app>
-- **Independent test handbook:** [docs/third-party-evaluator-guide.md](docs/third-party-evaluator-guide.md)
+```text
+site conditions → jobs and crews → task-hour screening → schedule alternatives → manager decision
+```
 
-## Reproducible result
+The console covers every documented US state and Washington, DC. A manager selects one global historical week, moves between portfolio and site views, inspects each hour, edits jobs and crews, and compares three schedule layers:
 
-Across three completed real FortyGuard historical replays, HeatShift reduced worker-minutes at or above the configured screening threshold by **78.0%** (**3,690 → 810**) while retaining **100%** of scheduled task time. See [the complete evaluation](docs/evaluation.md) and [raw results](data/evaluation_results.json).
+1. **Original** — the immutable submitted schedule.
+2. **HeatShift** — a deterministic, constraint-validated proposal.
+3. **Working** — the manager-editable plan with undo and reset.
 
-Separately, the existing screening policy was tested without fitting against
-**566 measured HEAT-SHIELD human-exposure sessions**. Its score has a **0.7718
-Spearman rank correlation** with measured one-hour physical work-capacity loss;
-sessions at or above the product threshold averaged **36.45 percentage points
-more loss** than sessions below it. See the [empirical benchmark](docs/real-data-validation.md).
+Managers can create sites by a map-drawn polygon, a map-positioned circle, or latitude/longitude and radius; create and edit crews and jobs; assign eligible crews; drag pending work; defer or cancel it; and inspect exact rejection reasons for invalid plans. Completed and in-progress jobs are locked from optimization.
 
-The console opens with one reference operation containing three fictional crews
-and six fictional tasks. Users can create, edit, import, and export their own
-fictional operational scenarios. The current proof of concept evaluates those
-inputs against one fixed Phoenix FortyGuard replay; the provider responses and
-activity IDs are real.
+## Three kinds of data
 
-## What works
+HeatShift never blurs these layers:
 
-- Real FortyGuard heatmap: 198 Phoenix grid cells at 100 m granularity.
-- Real FortyGuard environmental series: 11 hourly apparent-temperature, heat-index, humidity, wet-bulb, and solar observations.
-- Explicit live → saved-real-response → failure data strategy; no generated weather.
-- Policy-file-driven 0–100 screening score with factor evidence.
-- Deterministic greedy scheduler that preserves fixed work, dependencies, duration, shift bounds, and crew availability.
-- One-call demo plus create/poll FastAPI workflow.
-- Six-tool orchestration trace with a free hosted Groq model in deployment, provider-configurable
-  Responses access for local testing, and a deterministic fallback.
-- Universal SVG renderer for all 198 real GeoJSON cells; no WebGL or map-tile dependency.
-- Separate `/console` workspace with editable site, crew, task, timing,
-  workload, PPE, acclimatization, shade, dependency, and mobility fields.
-- Browser-local scenario persistence plus JSON import/export; no account or
-  database is required and no operational data is stored by the backend.
-- Before/after schedule, constraint/result summary, simulated manager decision state,
-  recommendations, evidence drawer, and interactive spectacles HUD.
-- Evidence-led public homepage with HEAT-SHIELD metrics, comparison chart,
-  source link, interpretation, and prominent non-causal limitations.
-- Three-replay offline evaluation plus backend, frontend component, browser-local
-  workflow, and desktop/mobile end-to-end regression suites.
-- Reproducible CC BY 4.0 human-trial benchmark with integrity hashes and public metrics API.
+- **Real environmental evidence:** cached or newly provisioned FortyGuard heatmaps, hourly environmental parameters, satellite context, provider activity IDs, and integrity hashes.
+- **Fictional operations:** site names, crews, worker counts, PPE, acclimatization, workloads, jobs, dependencies, windows, shade, and statuses used to demonstrate management decisions.
+- **HeatShift-derived values:** task-hour screening scores, hourly spatial interpolation, schedules, Site Thermal Burden, Crew Exposure Load, disruption components, and downstream comparisons.
 
-## Quick start
+All five curated site-weeks are checked in. A visibly labeled demonstration profile exists only as a development outage path and is never labeled as provider evidence. A requested location is never silently replaced with Phoenix data.
 
-Prerequisites: Python 3.11+ and Node.js 20+.
+## Decision metrics
+
+- **Task-hour screening score:** versioned 0–100 policy using apparent temperature, workload, PPE, acclimatization, and sun/shade.
+- **Site Thermal Burden:** `Σ max(0, hourly apparent temperature − 35°C) × 1 hour`.
+- **Crew Exposure Load:** `Σ (screening score ÷ 100) × duration hours × worker count`.
+- **Operational Disruption:** minutes shifted, crew reassignments, cross-day moves, manager deferrals, cancellations, and hard-constraint violations reported separately.
+- **Outcomes:** original/proposed exposure, high-risk worker-hours avoided, percentage reduction at score 50, jobs moved, fixed jobs preserved, residual alerts, work retained, and schedule validity.
+
+The 35°C burden baseline and score-50 threshold are disclosed product settings, not medical or regulatory limits. Every metric opens a deterministic definition, formula, inputs, source, comparison, and limitations.
+
+## Evidence and empirical validation
+
+The homepage retains the independent HEAT-SHIELD benchmark: 566 controlled human-exposure sessions, evaluated without fitting the HeatShift policy. The score’s Spearman rank correlation with measured one-hour physical-work-capacity loss was 0.7718; sessions at or above score 50 averaged 36.45 percentage points more measured loss than sessions below it. This is descriptive association, not proof of injury prevention, medical validity, or universal safety effectiveness. See [docs/real-data-validation.md](docs/real-data-validation.md).
+
+The default portfolio week is July 15–21, 2024. Curated acquisition is explicit and resumable:
+
+```bash
+python3 scripts/seed_curated_portfolio.py
+python3 scripts/seed_curated_portfolio.py --execute
+```
+
+`--execute` is the only mode that performs credit-consuming calls. It verifies provider usage, preserves a 200,000-credit reserve, checkpoints every activity ID, and never repeats a completed stage. CI never calls FortyGuard.
+
+## Architecture
+
+- Next.js UI with MapLibre GL JS and free OpenFreeMap vector tiles.
+- Real state/site GeoJSON SVG fallback when WebGL or the tile service is unavailable.
+- FastAPI domain API and deterministic weekly optimizer.
+- Supabase anonymous authentication and RLS-isolated durable workspaces.
+- Cloudflare Turnstile only for the single live site-week provisioning action.
+- Groq for concise grounded explanations; deterministic explanations and briefing remain available without an LLM.
+
+The browser obtains an anonymous Supabase session but domain reads and writes go through FastAPI. The backend forwards the user bearer token to Supabase so RLS remains authoritative. The service-role key stays server-side and is limited to provisioning/seed orchestration.
+
+## Local setup
+
+Python 3.11+ and Node.js 20+ are required.
 
 ```bash
 python3 -m venv .venv
@@ -69,90 +84,55 @@ npm ci
 NEXT_PUBLIC_API_BASE_URL=http://localhost:8000 npm run dev
 ```
 
-Open `http://localhost:3000` for the empirical product story and
-`http://localhost:3000/console` for the interactive planner. The default
-`FORTYGUARD_MODE=cached` uses labelled responses captured from successful real
-API activities, so the console is reliable and consumes no credits.
+Local development defaults to a header-based workspace adapter so the product can be tested before cloud credentials exist. Hosted Vercel runtimes default to fail-closed Supabase JWT verification. Never set `HEATSHIFT_LOCAL_AUTH=true` in production.
 
-To call FortyGuard live at runtime:
+## Production setup
 
-```bash
-export FORTYGUARD_API_KEY="..."
-export FORTYGUARD_MODE=live
+Apply [the Supabase migration](supabase/migrations/202609010001_weekly_operations.sql), enable anonymous sign-ins, and configure:
+
+```text
+NEXT_PUBLIC_SUPABASE_URL
+NEXT_PUBLIC_SUPABASE_PUBLISHABLE_KEY
+NEXT_PUBLIC_TURNSTILE_SITE_KEY
+SUPABASE_URL
+SUPABASE_PUBLISHABLE_KEY
+SUPABASE_SECRET_KEY
+SUPABASE_JWKS_URL
+TURNSTILE_SECRET_KEY
+FORTYGUARD_API_KEY
+GROQ_API_KEY or LLM_API_KEY
+FORTYGUARD_CREDIT_RESERVE=200000
+FORTYGUARD_SITE_WEEK_ESTIMATE=64240
+HEATSHIFT_LOCAL_AUTH=false
 ```
 
-Live mode submits a heatmap and environmental activity, polls both with bounded backoff, and falls back to the labelled saved real response if the service fails. Credentials stay server-side.
+Turnstile must allow localhost, preview, and production hostnames. Live provisioning fails before any provider submission if identity, Turnstile, geometry, date, quota, usage, or reserve validation fails. Supabase Free and Vercel Hobby are the intended zero-cost hackathon stack; no automatic paid overage is assumed.
 
-## Architecture
+## Public API
 
-```mermaid
-flowchart LR
-    H[Evidence homepage] --> UI[Editable Next.js console]
-    UI --> API[FastAPI workflow]
-    API --> FG[FortyGuard client]
-    FG --> R[Normalized real evidence]
-    R --> E[Deterministic risk engine]
-    E --> O[Constraint-aware optimizer]
-    O --> A[Six-tool agent]
-    A --> UI
-    UI --> HUD[Spectacles simulation]
+Compatibility routes `/health`, `/api/demo`, and `/api/validation/heatshield` remain. Weekly routes include:
+
+```text
+GET/PATCH /api/workspace
+GET /api/states
+GET /api/states/{state_code}/sites
+POST/GET/PATCH/DELETE /api/sites[/site_id]
+POST/GET /api/sites/{site_id}/provision[/advance]
+CRUD /api/sites/{site_id}/crews
+CRUD /api/sites/{site_id}/jobs
+POST /api/sites/{site_id}/plans/optimize
+POST /api/sites/{site_id}/plans/evaluate
+PATCH /api/sites/{site_id}/plans/working
+POST /api/analyses/{analysis_id}/questions
 ```
 
-The separation is deliberate: FortyGuard supplies evidence; the risk engine and optimizer produce the official result; the agent orchestrates and explains; the UI exposes every important assumption and activity ID.
+All weekly mutations require an anonymous bearer token. Provisioning additionally requires a single-use Turnstile token and idempotency key.
 
-## API
-
-| Method | Path | Purpose |
-|---|---|---|
-| `GET` | `/health` | Backend, FortyGuard, cache, and optional LLM state |
-| `POST` | `/api/demo` | Run the complete Phoenix replay and agent trace |
-| `POST` | `/api/analyze` | Analyze an editable fictional operation against the pinned Phoenix reference environment |
-| `POST` | `/api/analyses` | Run and return a completed job for the bundled single-site analysis |
-| `GET` | `/api/analyses/{id}` | Retrieve a job; deterministically reconstruct valid IDs after a serverless cold start |
-| `POST` | `/api/analyses/{id}/agent` | Re-run the auditable agent briefing |
-| `GET` | `/api/demo/scenario` | Inspect the fictional site, crews, and shift |
-| `GET` | `/api/validation/heatshield` | Inspect the real HEAT-SHIELD benchmark, measured metrics, provenance, and limitations |
-
-Interactive OpenAPI documentation is available at `/docs`.
-
-For an independent review that starts with the problem and scenario, separates
-real evidence from simulated inputs, reproduces the calculations, and provides
-a complete pass/fail protocol, use the
-[third-party evaluator handbook](docs/third-party-evaluator-guide.md).
-The stricter [claim-validation suite](docs/claim-validation-suite.md) adds a
-standard-library oracle, randomized differential checks, mutation checks,
-deployed determinism testing, and an explicit external-provenance trust tier.
-
-## Data provenance
-
-The main replay uses:
-
-- Heatmap activity: `81e55f4d-b51b-4dcc-bd4f-ab4e6c527002`
-- Environmental activity: `eb97f401-3e22-44e1-a537-a86a0aa912db`
-- Heatmap time: August 28, 2026 at 15:00 GMT−7
-- Environmental range: August 28, 2026 from 06:00–16:00 GMT−7
-
-Two additional pairs of completed real activity IDs are retained in `data/evaluation_results.json`. The client follows FortyGuard's official [`POST /v1/heatmap`](https://docs-api.fortyguard.com/docs/create-heatmap), [`POST /v1/env_params`](https://docs-api.fortyguard.com/docs/environmental-parameters), and [`GET /v1/status/{activity_id}`](https://docs-api.fortyguard.com/docs/check-status) flow.
-
-The separate empirical benchmark uses the public, CC BY 4.0
-[HEAT-SHIELD individual-session dataset](https://doi.org/10.6084/m9.figshare.25722300.v1).
-The checked-in 566-row derived slice has a recorded SHA-256 and can be rebuilt
-from the original workbook with `scripts/prepare_heatshield_validation.py`.
-
-## Screening methodology
-
-The environmental component uses FortyGuard's returned **apparent-temperature time series**. Workload, PPE burden, acclimatization, shade, and configured solar hours add deterministic points. All thresholds live in [`data/demo/policy_rules.json`](data/demo/policy_rules.json), scores are clamped to 0–100, and every result includes its factors.
-
-The optimizer evaluates 30-minute candidate starts and minimizes worker-weighted risk plus a schedule-disruption penalty. Fixed tasks never move. Full details are in [methodology.md](docs/methodology.md).
-
-NIOSH guidance links are curated tool outputs, including [workplace recommendations](https://www.cdc.gov/niosh/heat-stress/recommendations/index.html) and [acclimatization guidance](https://www.cdc.gov/niosh/heat-stress/recommendations/acclimatization.html).
-
-## Tests and evaluation
+## Verification
 
 ```bash
-python3 -m pytest backend/tests -q
+PYTHONPATH=backend:. pytest backend/tests -q
 python3 scripts/run_claim_evaluation.py
-python3 scripts/generate_evaluation.py
 cd frontend
 npm run lint
 npm run test:unit
@@ -160,62 +140,10 @@ npm run test:e2e
 npm run build
 ```
 
-The current local baseline is 67 backend passes plus one intentional
-LLM-prose expected failure, 32 frontend unit/component passes, and 9 browser
-journey passes with one desktop copy of a mobile-only check intentionally
-skipped. The harder scenario matrix includes fixed work, dense same-crew work,
-dependency chains, critical residual exposure, invalid inputs, and stateless
-repeatability. See [the testing guide](docs/testing.md).
+Current deterministic baseline: **101 backend tests pass with zero expected failures** and **14 focused frontend unit/component tests pass**. Frontend coverage includes weekly drawing, Markdown safety, state data, briefing presentation, and map fallback. Cross-browser journeys target Chromium, Firefox, WebKit, and mobile Chromium. See [docs/testing.md](docs/testing.md).
 
-The normal suite never calls FortyGuard. Live contract scripts are separate because completed activities consume credits:
+## Safety boundary
 
-```bash
-python3 scripts/test_fortyguard_access.py
-python3 scripts/fetch_fortyguard_environment.py
-```
-
-## Deployment
-
-The hackathon deployment has a hard zero-cost constraint. Both projects use the
-Vercel Hobby plan and generated `vercel.app` domains; no Render service, database,
-paid monitoring product, or custom domain is required.
-
-- Backend: import the repository into Vercel with the repository root as the project root. Vercel detects the root `main.py` as FastAPI. Set `LLM_API_KEY` to the Groq API key and keep `FORTYGUARD_MODE=cached`; `FORTYGUARD_API_KEY` is optional in cached mode.
-- Frontend: import the same repository as a second Vercel project with `frontend/` as its root. Set `NEXT_PUBLIC_API_BASE_URL` to the backend origin, then add the frontend origin to the backend's `CORS_ORIGINS`. `/` serves the evidence homepage and `/console` serves the interactive planner.
-- Backend defaults select Groq's Responses endpoint and free-plan `qwen/qwen3.6-27b` model, which supports parallel tool orchestration. If its rate limit is exhausted, the deterministic fallback still returns the official result.
-- Live FortyGuard mode is an explicit demo-only option because it can consume API credits; the public default replays labelled responses from successful real activities.
-- The create endpoint completes within one request. Its in-memory cache is only an acceleration layer; valid job IDs are reconstructed from the deterministic replay if a later request reaches a fresh Vercel instance.
-
-Vercel Hobby is free but limited to personal, non-commercial use. This is a public
-hackathon demo deployment, not a commercial production hosting commitment. See
-[`docs/zero-cost-stack.md`](docs/zero-cost-stack.md) for the complete cost guardrails.
-
-The LLM connection is server-configurable through `LLM_PROVIDER`, `LLM_BASE_URL`,
-`LLM_API_KEY`, and `LLM_MODEL`. OmniRoute is accepted only as an explicit local test
-override; the public backend never depends on a localhost service. End-user API-key
-storage is intentionally excluded because this slice has no authentication or encrypted
-secret store.
-
-Run the smoke checklist in [demo-script.md](docs/demo-script.md) after both URLs are public.
-The deployed backend is `https://heatshift-ai-api.vercel.app`; run
-`python3 scripts/smoke_public_api.py` for its complete public contract or follow
-the endpoint-by-endpoint [API testing guide](docs/api-testing.md).
-The deployed frontend is `https://heatshift-ai-zeta.vercel.app`; its manager
-decision and wearable controls are explicitly local simulation state and never
-transmit an operational decision or worker message.
-
-## Safety limitation
-
-> HeatShift provides screening-level decision support using ambient and environmental data. It does not replace an on-site WBGT meter, emergency procedures, or a qualified safety professional. Product risk bands are not medical diagnoses or regulatory exposure limits.
-
-## Repository map
-
-```text
-backend/     FastAPI, FortyGuard client, models, services, agent, tests
-frontend/    Next.js homepage and console, SVG map, timeline, evidence, HUD
-data/        fictional demo inputs, real evidence, validation slice, evaluation
-scripts/     live capability checks and reproducible evaluation
-docs/        architecture, methodology, evaluation, demo, submission copy
-```
+HeatShift provides screening-level planning support. It does not provide a live sensor reading, a building measurement, a medical diagnosis, an injury prediction, a regulatory exposure limit, or a substitute for on-site WBGT measurement, emergency procedures, and qualified safety judgment. The optimizer returns a validated feasible plan; it does not claim a mathematically global optimum.
 
 Licensed under the MIT License.

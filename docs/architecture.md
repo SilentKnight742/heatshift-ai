@@ -1,62 +1,83 @@
-# Architecture
+# Weekly product architecture
 
-HeatShift is intentionally a narrow vertical slice. Each layer owns one kind of truth.
+## System flow
 
 ```mermaid
 sequenceDiagram
-    participant M as HSE manager
+    participant M as Operations manager
     participant UI as Next.js console
     participant API as FastAPI
-    participant FG as FortyGuard API
-    participant R as Risk engine
-    participant O as Optimizer
-    participant A as Agent
+    participant DB as Supabase + RLS
+    participant FG as FortyGuard
+    participant O as Deterministic engine
+    participant L as Groq
 
-    M->>UI: Edit a browser-local fictional scenario
-    UI->>API: POST /api/analyze
-    API->>FG: Heatmap + environmental activities (live mode)
-    FG-->>API: Completed evidence or explicit failure
-    API->>R: Observations + tasks + crews + policy
-    R-->>API: Scores, bands, factors, worker-minutes
-    API->>O: Baseline schedule + constraints
-    O-->>API: Revised schedule + movements + metrics
-    API->>A: Completed deterministic result
-    A-->>API: Tool trace + explanation + worker alerts
-    API-->>UI: One auditable analysis result
-    UI-->>M: Map, plan, controls, HUD, evidence
+    M->>UI: Select state, week, site, day and hour
+    UI->>API: Bearer-authenticated domain request
+    API->>DB: User-scoped PostgREST request
+    DB-->>API: Workspace permitted by RLS
+    opt one live site-week
+        M->>UI: Define geometry and pass Turnstile
+        UI->>API: Provision with idempotency key
+        API->>DB: Atomic quota and credit reservation
+        API->>FG: 7 maps + 7 environmental jobs + satellite
+        API->>DB: Checkpoint each activity and result
+    end
+    API->>O: Evidence + fictional jobs/crews
+    O-->>API: Validated Original/HeatShift/Working plans
+    API-->>UI: Metrics, formulas, provenance and limitations
+    opt explanation
+        API->>L: Allowlisted authoritative context
+        L-->>API: Short Markdown explanation
+        API->>API: Reject unsupported numbers/contradictions
+    end
 ```
 
 ## Trust boundaries
 
-| Component | May do | Must not do |
+| Layer | Authority | Explicit prohibition |
 |---|---|---|
-| FortyGuard client | Authenticate, validate, submit, poll, normalize, label, cache completed real responses | Generate synthetic environmental evidence |
-| Risk engine | Read the versioned policy, calculate the official score, expose factors | Call an LLM or invent missing apparent temperature |
-| Optimizer | Search valid 30-minute starts and verify constraints | Change duration, move fixed work, overlap a crew, violate dependencies |
-| Agent | Call validated tools, preserve model outputs, explain deterministic evidence | Calculate or alter the official score, invent a tool result |
-| Frontend | Present the empirical homepage; store editable fictional scenarios locally; submit validated scenario JSON; present provenance, evidence, limitations, and local HUD interactions | Receive or expose server API keys; claim browser-local state is a durable audit record |
+| FortyGuard | Environmental provider payloads and activity IDs | Does not define jobs, crews, risk policy, or schedules |
+| Supabase | Anonymous identity and row ownership through RLS | Service role is never exposed to the browser |
+| FastAPI | Domain validation, orchestration, quota, persistence adapter | Rejects untrusted browser scores, durations, and ownership claims |
+| Deterministic engine | Screening scores, metrics, constraint validation and proposals | Does not call an LLM; does not claim global optimality |
+| Groq | Concise grounded explanation | Cannot change a schedule or official metric |
+| Next.js | Interaction, map, timeline, inspector, session-only Q&A history | Does not hold provider, Turnstile secret, or Supabase service key |
 
-The visible agent card is intentionally downstream of the official result. It
-shows the execution mode and successful tool count, places the explanation in a
-larger dedicated reading surface, and states that deterministic fields—not the
-LLM prose—are authoritative.
+## Persistence
 
-## Failure behavior
+Supabase anonymous sign-in creates a user identity without a login screen. Every exposed table has RLS. The browser sends its bearer token to FastAPI; FastAPI forwards that token for user-scoped database access. Curated environmental evidence is shared and immutable. Editing a curated operation stores a private operational overlay; it does not copy or mutate the environmental evidence.
 
-1. Live FortyGuard is attempted only when `FORTYGUARD_MODE=live`.
-2. A live error falls back to a labelled saved response captured from completed real activities.
-3. If neither live nor saved real evidence is available, the analysis fails explicitly.
-4. If the LLM is unavailable, the same six validated tools run in a deterministic fallback sequence.
-5. The map always renders all real GeoJSON cells, task points, site boundary,
-   and cooling zone as SVG. It does not depend on WebGL or third-party map tiles.
-6. Editing a scenario invalidates the previous result until the user explicitly
-   runs the analysis again.
+The current adapter serializes the domain aggregate in `workspaces.domain_snapshot` while the migration also defines normalized tables for sites, days, crews, jobs, dependencies, plan versions, entries, analyses, provisioning, and quota. This preserves one authoritative RLS boundary while the domain model evolves.
 
-The backend remains stateless for user scenarios: `POST /api/analyze` returns a
-complete result but does not retain the request. The console persists the latest
-scenario in that browser's local storage and supports JSON import/export. The
-legacy job-shaped demo workflow has an in-memory acceleration cache and can
-reconstruct valid IDs from the deterministic reference replay after a cold start.
+Local testing may use `x-heatshift-workspace`; Vercel defaults this adapter off and fails closed unless Supabase JWT verification is configured.
 
-The complete regression layers and browser-local CRUD boundary are documented
-in [testing.md](testing.md).
+## Provider state machine
+
+1. Validate JWT, Turnstile action/hostname/token, state, US containment, area, historical week, user quota, usage and global reserve.
+2. Compute the canonical request hash. A complete validated cached result can be reused without another provider call while still consuming that anonymous workspace's one-site allowance.
+3. Claim a server-only atomic reservation RPC. Active hashes are unique, so concurrent identical requests cannot double-spend credits; one owner can hold one live allocation.
+4. Submit daily 15:00 100m heatmaps and immediately persist activity IDs.
+5. Poll in short idempotent advances; persist each completed result.
+6. Submit each environmental job only after that day’s heatmap yields a mean.
+7. Submit satellite segmentation once.
+8. Normalize, validate all seven dates, 24 hourly conditions per day, non-empty cells and all 15 activity IDs, then store the server-only request cache and mark `ready`, `degraded`, or `failed`.
+9. Release the reservation. Retries process only missing/failed stages.
+
+The estimated 64,240 credits per site-week and 200,000-credit reserve are safety configuration, not a provider billing guarantee.
+
+## Maps and failure behavior
+
+MapLibre uses the free OpenFreeMap vector style for pan, zoom, buildings, clustered portfolio sites, job markers, crews, cells and site boundaries. Any WebGL initialization or early tile/style failure switches to the checked-in US state GeoJSON and a fully functional SVG thermal renderer. Map-created geometry is revalidated server-side; the browser is never the authority for state containment or the 10 mi² cap.
+
+When the selected week does not match a site’s evidence, the API returns no environmental days and the UI says “No evidence for the selected week.” It never reuses evidence from another time or location.
+
+## Data classification
+
+- Real: provider outputs, activity IDs and integrity hashes.
+- Fictional: operations, people, logistics, jobs, zones and statuses.
+- Derived: hourly spatial reconstruction, buildings estimates, scores, metrics and schedules.
+
+Building context is a HeatShift estimate derived from nearby/intersecting provider cells, not a building or indoor sensor reading.
+
+The exact curated hashes and provider activity IDs are pinned in `claim_evaluation/evidence_manifest.json`. Two environmental activities remained indefinitely in provider `Processing`; their IDs are retained there as abandoned, and separately submitted completed replacements are the authoritative cached inputs.

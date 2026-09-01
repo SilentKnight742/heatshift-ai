@@ -1,82 +1,79 @@
-# Screening methodology
+# Methodology
 
-HeatShift's official result is deterministic and independent of the LLM. The policy is versioned in `data/demo/policy_rules.json`; this document explains policy v1.0.0.
+HeatShift is a historical planning simulator. It has no forecast or future-weather mode.
 
-## Environmental evidence
+## Environmental acquisition and reconstruction
 
-FortyGuard returned a spatial heatmap at 15:00 and an 11-hour environmental series for 06:00–16:00 local Phoenix time. The environmental request requires a temperature input, so HeatShift does **not** present that input as an independently returned hourly ambient-temperature series. It uses the returned apparent-temperature array for the environmental risk component and shows the heatmap temperature separately.
+For each site-day, HeatShift requests a 100m heatmap at 15:00 local and a full-day environmental series. The daily cell field is reconstructed hourly as:
 
-`None` and `-999` are normalized to missing. A missing apparent temperature stops scoring explicitly rather than triggering imputation.
+```text
+hourly cell apparent temperature
+  = hourly site apparent temperature
+  + (15:00 cell temperature − 15:00 heatmap mean)
+```
 
-FortyGuard wet-bulb values are displayed as an environmental parameter. They are not described as measured workplace WBGT.
+This preserves the provider’s hourly site curve and that day’s spatial differences. Each task segment uses the derived value from the cell nearest its mapped job point, so a valid location edit can change the task score. It does not claim that every cell was independently measured or requested at every hour. Wet bulb and humidity are hourly provider arrays. The provider’s clear-sky GHI is a daily time-range summary and is labeled as a daily average rather than an hourly reading. Satellite land-cover percentages are also explanatory context; none of these values are hidden score weights.
 
-## Score
+## Task-hour screening score
 
-For each 30-minute task segment:
+Version `heatshift-screening-v2.0` is deterministic:
 
 ```text
 score = apparent-temperature points
-      + workload adjustment
-      + PPE adjustment
-      + acclimatization adjustment
-      + direct-solar or shade adjustment
+      + workload points
+      + acclimatization points
+      + PPE burden points
+      + solar/shade points
 ```
 
-The sum is clamped to 0–100.
+Apparent temperature contributes 8 / 20 / 32 / 45 / 55 points across `≤35`, `>35–38`, `>38–41`, `>41–44`, and `>44°C`. Workload contributes 4 / 12 / 20 / 28 for light through very heavy; acclimatization contributes 0 / 8 / 14 for acclimatized, returning and new; PPE contributes 0 / 7 / 14; unshaded work from 10:00–16:00 adds 10 while shade subtracts 10. The result is clamped to 0–100.
 
-| Apparent temperature | Points |
-|---|---:|
-| ≤35°C | 8 |
-| >35–38°C | 20 |
-| >38–41°C | 32 |
-| >41–44°C | 45 |
-| >44°C | 55 |
+Score 50 is the product’s disclosed high-risk screening threshold. It is not a medical threshold, WBGT work/rest limit, regulatory exposure limit, or injury probability.
 
-Workload adds 0 / 8 / 18 / 25 points for light / moderate / heavy / very heavy work. PPE adds 0 / 5 / 10 points for low / medium / high burden. Acclimatization adds 0 / 6 / 12 points for acclimatized / returning / new crews. Unshaded work from 10:00–16:00 adds 6 points; a shaded task subtracts 5.
+## Primary metrics
 
-| Score | Product screening band |
-|---|---|
-| 0–24 | Low |
-| 25–49 | Moderate |
-| 50–74 | High |
-| 75–100 | Critical |
-
-These are product screening bands—not medical diagnoses, WBGT-based work/rest limits, or regulatory exposure limits.
-
-## Empirical alignment check
-
-Policy v1.0.0 is also applied, without fitting, to a 566-session slice of the
-public HEAT-SHIELD controlled human-exposure dataset. A fixed heavy-work,
-acclimatized profile is used; source coverall and solar conditions map to the
-existing PPE and solar adjustments. The comparison uses measured one-hour
-physical work-capacity loss as its outcome.
-
-This produces a descriptive score-to-outcome Spearman correlation of 0.7718 and
-a 36.45 percentage-point difference in mean measured loss between sessions below
-and at/above score 50. Records include repeated trials by participants, so no
-inferential p-value or causal claim is reported. See the complete
-[empirical benchmark](real-data-validation.md).
-
-## Exposure metric
-
-For every task segment whose score is at least 50:
+### Site Thermal Burden
 
 ```text
-exposed worker-minutes = segment minutes × crew worker count
+Σ max(0, hourly apparent temperature − 35°C) × 1 hour
 ```
 
-This makes the principal metric understandable and reproducible. It does not imply an injury probability.
+Reported in apparent-temperature degree-hours per day/week. The 35°C baseline is configurable product policy, not a medical limit.
 
-## Greedy optimizer
+### Crew Exposure Load
 
-1. Split the allowable window into 30-minute candidate starts.
-2. Rank movable tasks from highest to lowest workload.
-3. Reject candidates outside the window, overlapping the crew, or violating dependencies.
-4. Score valid candidates using worker-weighted screening risk plus 1.5 points per minute of schedule disruption.
-5. Choose the lowest-objective valid start and validate the final schedule again.
+```text
+Σ (task screening score ÷ 100) × task duration hours × crew worker count
+```
 
-The duration and crew stay unchanged; fixed tasks never move. Productivity retained is 100% when every task remains scheduled at full duration.
+Reported as risk-weighted worker-hours by crew and plan, including highest crew and spread. It is a scheduling indicator, not physiological dose.
 
-## Human control
+### Operational Disruption
 
-The optimizer is a prioritization aid. Fixed high-risk work remains visible and generates an escalation recommendation. A qualified safety lead must use on-site measurement, company procedures, emergency planning, and applicable requirements to choose actual controls.
+HeatShift does not invent a composite disruption score. It reports total minutes shifted, crew reassignments, cross-day moves, manager deferrals, cancellations and hard-constraint violations separately.
+
+### Downstream outcomes
+
+Worker-minutes at score ≥50, high-risk worker-hours avoided, percent reduction, jobs rescheduled, fixed jobs preserved, residual alerts, work retained and constraint validity follow from the task-hour schedule comparison. Percentage reduction is threshold-dependent and does not mean injuries prevented.
+
+## Seven-day optimizer
+
+Candidate starts are aligned to 30 minutes. The engine uses deterministic greedy placement followed by bounded local improvement with a lexicographic objective:
+
+1. All hard constraints satisfied.
+2. Minimum worker-minutes at score ≥50.
+3. Minimum total Crew Exposure Load.
+4. Minimum highest individual crew load.
+5. Minimum shifted minutes, crew changes and cross-day moves.
+
+Hard constraints preserve fixed, completed and in-progress work; exact duration; date/time windows; site/week and shift bounds; crew non-overlap; eligible crews; and dependency order. Cross-day moves require an explicit window. Cancelled work is excluded; deferred work remains pending later; the proposal never cancels a job. The result is the best validated feasible plan found within bounded search, not a proven global optimum.
+
+## AI authority
+
+Groq receives the completed deterministic result and may write four short Markdown sections: Decision, Why, Next actions, and Still exposed. Numeric values are allowlisted. Unsupported numbers, missing required sections, material contradictions, or out-of-range length discard the model response and select the deterministic briefing.
+
+Contextual Q&A receives one authoritative selected site/job/crew/metric/plan context and a question up to 500 characters. It may explain facts but cannot mutate anything. Twenty model answers per anonymous user/day are permitted; deterministic inspector explanations are unlimited and Q&A history stays in browser session storage.
+
+## Empirical boundary
+
+The separate HEAT-SHIELD benchmark applies the policy without fitting to 566 controlled human-exposure sessions. Its association with measured work-capacity loss supports usefulness as a screening ordering signal, not clinical validity, causality, injury reduction, or universal safety effectiveness. See [real-data-validation.md](real-data-validation.md).

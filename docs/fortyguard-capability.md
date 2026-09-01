@@ -1,5 +1,7 @@
 # FortyGuard capability gate
 
+The original gate below validates the provider contract used by compatibility APIs. The weekly product extends the same submit/poll contract to seven daily heatmaps, seven full-day environmental requests and one satellite segmentation per site-week. Weekly acquisition is explicit, credit-guarded, idempotent and resumable through `scripts/seed_curated_portfolio.py`; current completion and activity IDs are authoritative only in each checked-in `data/curated/*/week-2024-07-15.json` file.
+
 Gate completed August 29, 2026.
 
 | Check | Result |
@@ -22,4 +24,3 @@ The first accepted polygon was smaller than one 100 m grid cell and completed wi
 The actual response matched the published top-level shape. Heatmap tile temperature appears in `properties.average_temperature`; environmental arrays include `apparent_temperature_celsius`, `heat_index_celsius`, `relative_humidity_percent`, and `wet_bulb_temperature_celsius`. Clear-sky GHI/DNI/DHI are summary values for the time range.
 
 No API key or signed URL is stored in the repository.
-

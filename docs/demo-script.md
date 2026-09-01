@@ -1,82 +1,43 @@
-# Three-minute demo script — recording guide only
+# Judge demo walkthrough
 
-Do not record or upload from an automated workflow. This is the final manual
-guide for the user-owned video step.
+Target: 3–4 minutes.
 
-## Before recording
+## 1. Problem and evidence — 35 seconds
 
-- Backend `/health` returns 200.
-- Frontend opens in a private/incognito window.
-- `POST /api/demo` completes and the map has 198 cells.
-- Browser developer tools contain no API key.
-- Use `FORTYGUARD_MODE=cached` for a stable video; the UI labels it as a saved real response.
-- Evidence drawer shows both FortyGuard activity IDs.
-- Decision summary shows `2 / 4 / 2 / 100%`.
-- HEAT-SHIELD panel loads all four headline metrics and five limitations.
-- HUD says `HUD simulation` and `Supervisor action required`.
+Open the homepage. Say: “A weather map tells an operations manager where it is hot. HeatShift answers what to do with this week’s jobs and crews without hiding the operational cost.” Show the five-step flow and three decision dimensions. Briefly show the HEAT-SHIELD result and say it is descriptive human-exposure evidence, not an injury-reduction claim.
 
-## 0:00–0:15 · Problem and hook
+## 2. Portfolio and time — 35 seconds
 
-“Weather tells us how hot it will be. HeatShift tells an operations manager
-which work can move, when it should move, and what risk remains.”
+Open Console. Dismiss or follow the walkthrough. Switch state, portfolio/site mode, day and hour. Point out the state boundary, site burden color, hourly chart, spatial cells, active work and the label distinguishing real provider evidence, fictional operation and derived estimates.
 
-Show the fictional Phoenix site, 12 workers, and the original 06:00–16:00 shift.
+## 3. Manager inputs — 45 seconds
 
-## 0:15–0:40 · Real FortyGuard evidence
+Open Sites/Crews/Jobs. Show editable worker count, PPE, acclimatization, workload, eligible crews, dependencies, shade, mobility and status. Create a site dialog and demonstrate a map-drawn polygon or circle without submitting a live provider request. Explain the 10 mi² limit, inferred timezone, one-site quota and reserve.
 
-Click **Run HeatShift Analysis**.
+## 4. Compare and act — 60 seconds
 
-“HeatShift retrieves a real FortyGuard thermal field and environmental series. This replay contains 198 grid cells and 11 hourly observations. The heatmap activity and environmental activity remain attached to the decision.”
+Switch Original → HeatShift → Working. Show the unchanged Original layer, the proposal and the editable Working layer. Apply one movement, drag a pending job, drop an eligible crew on it, undo, then reset. Attempt one invalid edit if reliable and show the exact constraint. Mark work deferred or cancelled and show that no job is automatically completed by the clock.
 
-Point to the source badge, thermal map, apparent-temperature strip, and evidence drawer.
+## 5. Explain the result — 40 seconds
 
-## 0:40–1:25 · Workforce-aware optimization
+Open each primary metric. Say:
 
-“The LLM never calculates the official score. A versioned policy combines apparent temperature, workload, PPE, acclimatization, shade, and time. Every task shows its factors.”
+- Site Thermal Burden describes weekly heat intensity/persistence.
+- Crew Exposure Load makes cumulative worker-weighted assignment visible.
+- Operational Disruption reports logistics separately, not as an opaque score.
 
-Show the before/after timeline.
+Show the formula and inputs before clicking Ask AI. The AI explains authoritative numbers; it cannot change them, and unsupported numeric prose is discarded.
 
-“Heavy cargo loading moves from 1:00 PM to 6:30 AM, dropping its peak screening score from 100 to 49. Asphalt repair moves from noon to 7:30 AM, dropping from 84 to 31. Fixed tasks remain fixed; dependencies, duration, and crew availability are preserved.”
+## 6. Resilience and boundary — 25 seconds
 
-## 1:25–1:50 · Measured operational result
+Switch to “Use SVG fallback.” Explain that MapLibre/OpenFreeMap is the richer view, while the same GeoJSON thermal data remains functional without WebGL or tiles. End on the safety notice: screening-level planning only; verify with on-site WBGT and qualified judgment.
 
-“On this replay, exposed worker-minutes fall from 1,230 to 270—78%. Across three real FortyGuard replays, the aggregate is 3,690 to 810, also 78%, with 100% of scheduled task time retained.”
+## Pass/fail before recording
 
-Show the primary metrics and decision summary. Say “worker-minutes above the
-product screening threshold,” not “workers saved.” Point out that two movable
-tasks changed, four fixed tasks were preserved, two residual alerts remain, and
-100% of task time is retained.
-
-## 1:50–2:15 · Human control and residual risk
-
-Select a manager decision, show the remaining fixed-work alerts, and test one
-worker HUD button.
-
-“The manager remains in control. These buttons are browser-only simulation
-state. No physical wearable, worker message, or supervisor notification is
-connected.”
-
-## 2:15–2:40 · Trustworthy AI
-
-Open the evidence drawer.
-
-“The agent runs six validated tools: retrieve evidence, load the shift, calculate risk, optimize, retrieve NIOSH guidance, and create alerts. If the model provider fails, the deterministic tool workflow still completes. Here is the full trace, source IDs, risk factors, and limitations.”
-
-## 2:40–2:55 · External evidence
-
-Scroll to the dashboard HEAT-SHIELD panel:
-
-“Separately from the fictional operation, we apply this unchanged policy to 566
-measured HEAT-SHIELD human-exposure sessions. The score's rank correlation with
-measured one-hour work-capacity loss is 0.7718, and sessions at or above the
-screening threshold average 36.45 percentage points more loss. This is
-descriptive external evidence—not clinical or field-site validation.”
-
-## 2:55–3:00 · Close
-
-“HeatShift turns FortyGuard intelligence into a shift decision that protects
-people while keeping operations moving.”
-
-Keep the application visible throughout. Verify the final video is below 3:00,
-opens without login, and does not use slides as a substitute for the working
-product.
+- Seven days and 24 hours navigate without stale location/time evidence.
+- Original remains immutable; Working accepts valid edits and rejects invalid ones.
+- Markdown headings/lists render without visible asterisks; raw HTML never executes.
+- Site/crew/job CRUD persists after refresh when Supabase is configured.
+- SVG fallback displays cells and job/site selection.
+- No removed wearable feature or outdated single-day product claim appears.
+- Mobile setup panel collapses and timeline scrolls horizontally without page overflow.

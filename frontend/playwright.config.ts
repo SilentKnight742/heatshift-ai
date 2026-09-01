@@ -16,7 +16,7 @@ export default defineConfig({
   },
   webServer: [
     {
-      command: "python -m uvicorn app.main:app --host 127.0.0.1 --port 8000",
+      command: "python3 -m uvicorn app.main:app --host 127.0.0.1 --port 8000",
       cwd: "../backend",
       url: "http://127.0.0.1:8000/health",
       reuseExistingServer: !process.env.CI,
@@ -45,5 +45,7 @@ export default defineConfig({
         launchOptions: existsSync(localChromium) ? { executablePath: localChromium } : undefined,
       },
     },
+    { name: "firefox", use: { ...devices["Desktop Firefox"] } },
+    { name: "webkit", use: { ...devices["Desktop Safari"] } },
   ],
 });

@@ -18,6 +18,7 @@ npm-debug.log*
 coverage/
 playwright-report/
 test-results/
+data/curated/**/.acquisition-checkpoint.json
 
 .vercel
 .env*.local
