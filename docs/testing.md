@@ -4,8 +4,8 @@
 
 | Layer | Current result | Scope |
 |---|---:|---|
-| Backend | 102 passed, 0 expected failures | Auth, ownership, CRUD, geometry, quota, provisioning, provider normalization/cache, metrics, optimizer, AI grounding, compatibility APIs and claim evaluation |
-| Frontend unit/component | 14 passed | API client, briefing presentation, weekly Markdown safety, state-map drawing and forced SVG fallback |
+| Backend | 105 passed, 0 expected failures | Auth, ownership, CRUD, geometry, quota, provisioning, provider normalization/cache, metrics, optimizer, AI grounding, compatibility APIs and claim evaluation |
+| Frontend unit/component | 15 passed | API client and anonymous-session concurrency, briefing presentation, weekly Markdown safety, state-map drawing and forced SVG fallback |
 | TypeScript | Passed | Full frontend type check |
 | Production build | Passed | Next.js static homepage and console |
 | Browser journeys | 12 runnable-host passes; WebKit delegated to CI | Chromium, mobile Chromium and Firefox passed locally; CI installs WebKit system dependencies on Ubuntu and runs the full matrix |

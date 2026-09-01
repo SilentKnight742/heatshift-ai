@@ -1,9 +1,32 @@
 import { afterEach, describe, expect, it, vi } from "vitest";
-import { getDemoScenario, getHeatshieldValidation, runDemo, runScenario } from "@/lib/api";
+import { getAnonymousSession, getDemoScenario, getHeatshieldValidation, runDemo, runScenario } from "@/lib/api";
 import { analysisFixture, scenarioFixture } from "./fixtures";
 
 describe("frontend API client", () => {
-  afterEach(() => vi.unstubAllGlobals());
+  afterEach(() => {
+    window.localStorage.clear();
+    delete process.env.NEXT_PUBLIC_SUPABASE_URL;
+    delete process.env.NEXT_PUBLIC_SUPABASE_PUBLISHABLE_KEY;
+    vi.unstubAllGlobals();
+  });
+
+  it("single-flights concurrent anonymous session creation", async () => {
+    process.env.NEXT_PUBLIC_SUPABASE_URL = "https://example.supabase.co";
+    process.env.NEXT_PUBLIC_SUPABASE_PUBLISHABLE_KEY = "sb_publishable_test";
+    const fetchMock = vi.fn().mockResolvedValue(new Response(JSON.stringify({
+      access_token: "session-token",
+      refresh_token: "refresh-token",
+      expires_in: 3600,
+      user: { id: "workspace-a" },
+    }), { status: 200 }));
+    vi.stubGlobal("fetch", fetchMock);
+
+    const [first, second] = await Promise.all([getAnonymousSession(), getAnonymousSession()]);
+
+    expect(first).toEqual(second);
+    expect(first.workspaceId).toBe("workspace-a");
+    expect(fetchMock).toHaveBeenCalledTimes(1);
+  });
 
   it("runs the default analysis with the expected method and URL", async () => {
     const result = analysisFixture();

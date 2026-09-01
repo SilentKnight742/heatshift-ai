@@ -473,8 +473,9 @@ export interface ProvisionStatus {
 export interface AuthSession { accessToken: string | null; workspaceId: string; mode: "supabase" | "local"; refreshToken?: string; expiresAt?: number }
 
 const SESSION_KEY = "heatshift-anonymous-session-v2";
+let anonymousSessionInFlight: Promise<AuthSession> | null = null;
 
-export async function getAnonymousSession(): Promise<AuthSession> {
+async function resolveAnonymousSession(): Promise<AuthSession> {
   const supabaseUrl = process.env.NEXT_PUBLIC_SUPABASE_URL;
   const publishableKey = process.env.NEXT_PUBLIC_SUPABASE_PUBLISHABLE_KEY;
   const saved = typeof window !== "undefined" ? window.localStorage.getItem(SESSION_KEY) : null;
@@ -523,6 +524,15 @@ export async function getAnonymousSession(): Promise<AuthSession> {
   const session: AuthSession = { accessToken: null, workspaceId, mode: "local" };
   window.localStorage.setItem(SESSION_KEY, JSON.stringify(session));
   return session;
+}
+
+export async function getAnonymousSession(): Promise<AuthSession> {
+  if (!anonymousSessionInFlight) anonymousSessionInFlight = resolveAnonymousSession();
+  try {
+    return await anonymousSessionInFlight;
+  } finally {
+    anonymousSessionInFlight = null;
+  }
 }
 
 async function workspaceFetch<T>(session: AuthSession, path: string, init: RequestInit = {}): Promise<T> {
