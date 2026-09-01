@@ -267,13 +267,6 @@ def test_tool_runtime_failure_is_recoverable() -> None:
     assert tool_result["error"]["code"] == "tool_runtime_failure"
 
 
-@pytest.mark.xfail(
-    reason=(
-        "Known assurance gap: model prose is returned after tool validation but is not "
-        "checked for contradictions with the official deterministic metrics."
-    ),
-    strict=False,
-)
 def test_model_briefing_cannot_contradict_official_metrics() -> None:
     result = analysis()
     llm = StubLLM(

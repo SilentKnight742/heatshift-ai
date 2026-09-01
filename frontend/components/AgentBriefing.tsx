@@ -1,4 +1,6 @@
 import type { AnalysisResult } from "@/lib/api";
+import ReactMarkdown from "react-markdown";
+import remarkGfm from "remark-gfm";
 
 export default function AgentBriefing({ agent }: { agent: AnalysisResult["agent"] }) {
   if (!agent) return null;
@@ -17,8 +19,8 @@ export default function AgentBriefing({ agent }: { agent: AnalysisResult["agent"
         <span className="agent-mode-chip"><i /> {mode}</span>
       </div>
       <div className="agent-response">
-        <span className="agent-response-mark" aria-hidden="true">“</span>
-        <p>{agent.explanation}</p>
+        <span className="agent-response-mark" aria-hidden="true">AI</span>
+        <div className="agent-response-markdown"><ReactMarkdown remarkPlugins={[remarkGfm]} skipHtml urlTransform={(url) => /^https?:\/\//.test(url) ? url : ""}>{agent.explanation}</ReactMarkdown></div>
       </div>
       <div className="agent-brief-foot">
         <p><strong>Grounding:</strong> the schedule, risk scores, and alerts above are deterministic. The AI only explains the validated result.</p>

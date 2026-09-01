@@ -34,7 +34,7 @@ class AgentToolbox:
             "calculate_exposure_risk": "Read deterministic screening risk and exposure metrics.",
             "optimize_shift": "Read the constraint-checked before/after shift optimization.",
             "get_policy_guidance": "Retrieve curated official NIOSH heat-stress guidance links.",
-            "create_worker_alerts": "Format the deterministic result for the spectacles interface.",
+            "create_worker_alerts": "Format deterministic residual-risk alerts for supervisor review.",
         }
         return [
             {

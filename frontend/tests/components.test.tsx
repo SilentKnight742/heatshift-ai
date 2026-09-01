@@ -4,7 +4,6 @@ import { describe, expect, it } from "vitest";
 import AgentBriefing from "@/components/AgentBriefing";
 import DecisionSummary from "@/components/DecisionSummary";
 import EvidenceDrawer from "@/components/EvidenceDrawer";
-import GlassesView from "@/components/GlassesView";
 import RiskSummary from "@/components/RiskSummary";
 import ShiftTimeline from "@/components/ShiftTimeline";
 import SiteMap from "@/components/SiteMap";
@@ -47,6 +46,17 @@ describe("analysis result components", () => {
     expect(screen.getByText("deterministic fallback")).toBeInTheDocument();
   });
 
+  it("renders safe Markdown and removes raw or unsafe HTML from an agent reply", () => {
+    const agent = analysisFixture().agent!;
+    agent.explanation = "## Decision\n\n**Move the task.** <script>alert('x')</script> [unsafe](javascript:alert(1))";
+    const { container } = render(<AgentBriefing agent={agent} />);
+    expect(screen.getByRole("heading", { name: "Decision" })).toBeInTheDocument();
+    expect(screen.getByText("Move the task.").tagName).toBe("STRONG");
+    expect(container.querySelector("script")).toBeNull();
+    expect(container.querySelector('a[href^="javascript:"]')).toBeNull();
+    expect(screen.getByText("alert('x')")).toBeInTheDocument(); // inert text, never executable markup
+  });
+
   it("opens and closes the evidence trail with provenance intact", async () => {
     const user = userEvent.setup();
     render(<EvidenceDrawer analysis={analysisFixture()} />);
@@ -57,10 +67,10 @@ describe("analysis result components", () => {
     expect(screen.getByRole("complementary", { hidden: true })).toHaveAttribute("aria-hidden", "true");
   });
 
-  it("keeps manager and worker choices local and mutually exclusive", async () => {
+  it("keeps manager choices local and mutually exclusive", async () => {
     const user = userEvent.setup();
     const analysis = analysisFixture();
-    render(<><ShiftTimeline baseline={analysis.baseline_schedule} optimized={analysis.optimized_schedule} movements={analysis.movements} /><GlassesView alerts={analysis.worker_alerts} /></>);
+    render(<ShiftTimeline baseline={analysis.baseline_schedule} optimized={analysis.optimized_schedule} movements={analysis.movements} />);
     const approve = screen.getByRole("button", { name: "Approve HeatShift plan" });
     const original = screen.getByRole("button", { name: "Keep original" });
     await user.click(approve);
@@ -69,7 +79,5 @@ describe("analysis result components", () => {
     expect(original).toHaveAttribute("aria-pressed", "true");
     expect(approve).toHaveAttribute("aria-pressed", "false");
     expect(screen.getByText(/Local browser state only/)).toBeInTheDocument();
-    await user.click(screen.getByRole("button", { name: "Acknowledge" }));
-    expect(screen.getByText(/Alert acknowledged · local demo state only/)).toBeInTheDocument();
   });
 });

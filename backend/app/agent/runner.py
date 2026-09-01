@@ -2,6 +2,7 @@ from __future__ import annotations
 
 import asyncio
 import json
+import re
 import time
 from typing import Any
 
@@ -134,6 +135,8 @@ class AgentRunner:
             if missing_tools:
                 input_items.append(self._remaining_tools_message(missing_tools))
                 continue
+            if not self._briefing_is_grounded(analysis, text):
+                return await self._run_deterministic_fallback(analysis)
             return self._model_output(analysis, text, traces)
 
         missing_tools = self._missing_tools(successful_tools)
@@ -156,6 +159,8 @@ class AgentRunner:
         text = self._extract_text(response)
         if not text:
             raise LLMUnavailable("Responses provider returned no final text")
+        if not self._briefing_is_grounded(analysis, text):
+            return await self._run_deterministic_fallback(analysis)
         return self._model_output(analysis, text, traces)
 
     async def _run_deterministic_fallback(self, analysis: AnalysisResult) -> AgentOutput:
@@ -256,6 +261,36 @@ class AgentRunner:
             evidence_references=self._evidence_references(analysis),
             alerts=analysis.worker_alerts,
         )
+
+    @staticmethod
+    def _briefing_is_grounded(analysis: AnalysisResult, text: str) -> bool:
+        authoritative = {
+            "metrics": analysis.metrics.model_dump(mode="json"),
+            "baseline": [item.model_dump(mode="json") for item in analysis.baseline_schedule],
+            "optimized": [item.model_dump(mode="json") for item in analysis.optimized_schedule],
+            "movements": [item.model_dump(mode="json") for item in analysis.movements],
+            "observation_count": len(analysis.observations),
+        }
+        pattern = re.compile(r"(?<![A-Za-z])\d+(?:\.\d+)?")
+        allowed = set(pattern.findall(json.dumps(authoritative, default=str)))
+        for value in list(allowed):
+            try:
+                numeric = float(value)
+                if numeric.is_integer():
+                    allowed.update({str(int(numeric)), f"{numeric:.1f}"})
+            except ValueError:
+                pass
+        allowed.update({"0", "1", "50", "100"})
+        if not set(pattern.findall(text)).issubset(allowed):
+            return False
+        lowered = " ".join(text.lower().split())
+        if analysis.metrics.optimized_exposed_worker_minutes > 0 and any(
+            phrase in lowered for phrase in ("all heat risk was eliminated", "no residual risk", "risk was eliminated")
+        ):
+            return False
+        if analysis.metrics.tasks_moved == 0 and "tasks were moved" in lowered:
+            return False
+        return True
 
     @staticmethod
     def _evidence_references(analysis: AnalysisResult) -> list[str]:
