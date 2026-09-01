@@ -13,9 +13,15 @@
     "test:e2e": "playwright test"
   },
   "dependencies": {
+    "@types/topojson-client": "^3.1.5",
+    "maplibre-gl": "^6.6.0",
     "next": "16.3.3",
     "react": "19.2.8",
-    "react-dom": "19.2.8"
+    "react-dom": "19.2.8",
+    "react-markdown": "^10.1.0",
+    "remark-gfm": "^4.0.1",
+    "topojson-client": "^3.1.0",
+    "us-atlas": "^3.0.1"
   },
   "devDependencies": {
     "@playwright/test": "^1.55.1",

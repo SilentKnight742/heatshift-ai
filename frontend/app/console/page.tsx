@@ -1,11 +1,11 @@
-import ConsoleWorkspace from "@/components/ConsoleWorkspace";
+import WeeklyConsole from "@/components/WeeklyConsole";
 import ProductHeader from "@/components/ProductHeader";
 
 export default function ConsolePage() {
   return (
     <main className="console-page">
       <ProductHeader consoleMode />
-      <ConsoleWorkspace />
+      <WeeklyConsole />
     </main>
   );
 }
