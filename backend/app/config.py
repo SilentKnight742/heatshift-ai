@@ -35,6 +35,22 @@ class Settings:
     llm_model: str | None = os.getenv("LLM_MODEL", "qwen/qwen3.6-27b")
     llm_reasoning_effort: str = os.getenv("LLM_REASONING_EFFORT", "")
     llm_max_output_tokens: int = int(os.getenv("LLM_MAX_OUTPUT_TOKENS", "1536"))
+    supabase_url: str | None = os.getenv("SUPABASE_URL")
+    supabase_publishable_key: str | None = os.getenv("SUPABASE_PUBLISHABLE_KEY")
+    supabase_secret_key: str | None = os.getenv("SUPABASE_SECRET_KEY")
+    supabase_jwks_url: str | None = os.getenv("SUPABASE_JWKS_URL")
+    turnstile_secret_key: str | None = os.getenv("TURNSTILE_SECRET_KEY")
+    turnstile_expected_hostnames: tuple[str, ...] = tuple(
+        host.strip()
+        for host in os.getenv(
+            "TURNSTILE_EXPECTED_HOSTNAMES",
+            "localhost,127.0.0.1,heatshift-ai-zeta.vercel.app",
+        ).split(",")
+        if host.strip()
+    )
+    fortyguard_credit_reserve: int = int(os.getenv("FORTYGUARD_CREDIT_RESERVE", "200000"))
+    fortyguard_site_week_estimate: int = int(os.getenv("FORTYGUARD_SITE_WEEK_ESTIMATE", "64240"))
+    weekly_local_auth: bool = os.getenv("HEATSHIFT_LOCAL_AUTH", "true").lower() == "true"
     cors_origins: tuple[str, ...] = tuple(
         origin.strip()
         for origin in os.getenv(
