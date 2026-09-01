@@ -140,7 +140,7 @@ npm run test:e2e
 npm run build
 ```
 
-Current deterministic baseline: **101 backend tests pass with zero expected failures** and **14 focused frontend unit/component tests pass**. Frontend coverage includes weekly drawing, Markdown safety, state data, briefing presentation, and map fallback. Cross-browser journeys target Chromium, Firefox, WebKit, and mobile Chromium. See [docs/testing.md](docs/testing.md).
+Current deterministic baseline: **102 backend tests pass with zero expected failures** and **14 focused frontend unit/component tests pass**. Frontend coverage includes weekly drawing, Markdown safety, state data, briefing presentation, and map fallback. Cross-browser journeys target Chromium, Firefox, WebKit, and mobile Chromium. See [docs/testing.md](docs/testing.md).
 
 ## Safety boundary
 

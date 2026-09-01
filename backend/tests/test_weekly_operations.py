@@ -13,6 +13,7 @@ from app.clients.fortyguard import FortyGuardError
 from app.models.weekly import GeometryInput, JobStatus, PlanLayer
 from app.models.site import GeoPoint
 from app.models.weekly import ProvisionRequest
+from app.routes.health import _anonymous_workspace_auth_mode
 from app.services.provisioning import ProvisioningError, ProvisioningService, _prepare_failed_retry, _remaining_credits, _request_hash
 from app.services.provider_result_cache import provider_result_cache
 from app.services.state_catalog import (
@@ -31,6 +32,12 @@ from app.services.weekly_store import weekly_store
 
 def workspace_headers() -> dict[str, str]:
     return {"x-heatshift-workspace": f"test-{uuid.uuid4()}"}
+
+
+def test_health_auth_mode_distinguishes_supabase_local_and_fail_closed():
+    assert _anonymous_workspace_auth_mode("https://example.supabase.co", "publishable", False) == "supabase"
+    assert _anonymous_workspace_auth_mode(None, None, True) == "local-test-adapter"
+    assert _anonymous_workspace_auth_mode(None, None, False) == "unconfigured-fail-closed"
 
 
 @pytest.fixture

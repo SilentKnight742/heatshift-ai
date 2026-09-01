@@ -29,7 +29,7 @@ python3 scripts/run_claim_evaluation.py
 python3 scripts/run_claim_evaluation.py --remote --repeat 3
 ```
 
-The suite is part of CI in offline mode. CI never calls FortyGuard. Current complete backend baseline is 101 passes and zero expected failures. The previous expected-failure narrative test was replaced by a real grounding guard and passing rejection/fallback tests.
+The suite is part of CI in offline mode. CI never calls FortyGuard. Current complete backend baseline is 102 passes and zero expected failures. The previous expected-failure narrative test was replaced by a real grounding guard and passing rejection/fallback tests.
 
 `claim_evaluation/evidence_manifest.json` now pins all five curated site-week hashes and their 75 completed provider activity IDs. Together with the six legacy replay IDs, `--verify-provider` checks 81 completed activities read-only. The manifest also records two abandoned environmental IDs that remained indefinitely in `Processing`; completed replacement activities are the inputs actually used.
 
