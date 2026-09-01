@@ -117,6 +117,11 @@ class WeeklyJobCreate(BaseModel):
 
     @model_validator(mode="after")
     def validate_window(self) -> "WeeklyJobCreate":
+        for value in (self.original_start, self.earliest_start, self.latest_finish):
+            if value.utcoffset() is None:
+                raise ValueError("job times must include a time-zone offset")
+        if self.original_start.minute % 30 or self.original_start.second or self.original_start.microsecond:
+            raise ValueError("original_start must align to a 30-minute boundary")
         if self.original_start < self.earliest_start:
             raise ValueError("original_start precedes earliest_start")
         if self.original_start.timestamp() + self.duration_minutes * 60 > self.latest_finish.timestamp():
@@ -214,6 +219,7 @@ class WeeklyAnalysis(BaseModel):
     original: list[ScheduleEntry]
     heatshift: list[ScheduleEntry]
     working: list[ScheduleEntry]
+    plan_metrics: dict[PlanLayer, WeeklyMetrics] = Field(default_factory=dict)
     metrics: WeeklyMetrics
     explanations: dict[str, MetricExplanation]
     recommendations: list[str]
@@ -268,4 +274,3 @@ class ProvisionStatus(BaseModel):
     reserved_credits: int
     activity_ids: dict[str, str]
     error: str | None = None
-

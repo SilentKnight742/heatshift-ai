@@ -1,5 +1,6 @@
 from __future__ import annotations
 
+from contextvars import ContextVar
 from dataclasses import dataclass
 
 import httpx
@@ -13,6 +14,11 @@ class WorkspacePrincipal:
     user_id: str
     access_token: str | None
     local: bool
+
+
+current_workspace_principal: ContextVar[WorkspacePrincipal | None] = ContextVar(
+    "heatshift_workspace_principal", default=None
+)
 
 
 async def require_workspace(
@@ -38,7 +44,9 @@ async def require_workspace(
             user_id = str(response.json().get("id") or "")
             if not user_id:
                 raise HTTPException(status_code=401, detail="Anonymous session has no user ID")
-            return WorkspacePrincipal(user_id=user_id, access_token=token, local=False)
+            principal = WorkspacePrincipal(user_id=user_id, access_token=token, local=False)
+            current_workspace_principal.set(principal)
+            return principal
         except httpx.HTTPError as exc:
             raise HTTPException(status_code=503, detail="Supabase identity could not be verified") from exc
 
@@ -47,5 +55,6 @@ async def require_workspace(
     workspace = (x_heatshift_workspace or "local-demo").strip()
     if not workspace or len(workspace) > 100:
         raise HTTPException(status_code=400, detail="Invalid local workspace ID")
-    return WorkspacePrincipal(user_id=workspace, access_token=None, local=True)
-
+    principal = WorkspacePrincipal(user_id=workspace, access_token=None, local=True)
+    current_workspace_principal.set(principal)
+    return principal

@@ -29,6 +29,46 @@ def nearest_condition(timestamp: datetime, days: list[SiteDay]) -> HourlyConditi
     return min(conditions, key=lambda item: abs(item.timestamp - timestamp))
 
 
+def _coordinate_pairs(value) -> list[list[float]]:
+    if not isinstance(value, list):
+        return []
+    if len(value) >= 2 and isinstance(value[0], (int, float)) and isinstance(value[1], (int, float)):
+        return [[float(value[0]), float(value[1])]]
+    return [point for item in value for point in _coordinate_pairs(item)]
+
+
+def spatial_offsets_for_job(job: WeeklyJob, days: list[SiteDay]) -> dict:
+    offsets = {}
+    for selected_day in days:
+        if not selected_day.heat_cells:
+            offsets[selected_day.date] = 0.0
+            continue
+        mean = sum(cell.temperature_c_1500 for cell in selected_day.heat_cells) / len(selected_day.heat_cells)
+        def distance(cell) -> float:
+            points = _coordinate_pairs(cell.geometry.get("coordinates", []))
+            if not points:
+                return float("inf")
+            longitude = sum(point[0] for point in points) / len(points)
+            latitude = sum(point[1] for point in points) / len(points)
+            return (longitude - job.location.longitude) ** 2 + (latitude - job.location.latitude) ** 2
+        cell = min(selected_day.heat_cells, key=distance)
+        offsets[selected_day.date] = cell.temperature_c_1500 - mean
+    return offsets
+
+
+def task_condition(timestamp: datetime, job: WeeklyJob, days: list[SiteDay], spatial_offsets: dict | None = None) -> HourlyCondition:
+    """Apply the disclosed daily spatial offset to the provider hourly curve."""
+    site_condition = nearest_condition(timestamp, days)
+    selected_day = min(days, key=lambda item: abs((item.date - site_condition.timestamp.date()).days))
+    offsets = spatial_offsets if spatial_offsets is not None else spatial_offsets_for_job(job, days)
+    offset = float(offsets.get(selected_day.date, 0.0))
+    return site_condition.model_copy(update={
+        "temperature_c": round(site_condition.temperature_c + offset, 2),
+        "apparent_temperature_c": round(site_condition.apparent_temperature_c + offset, 2),
+        "source": "HeatShift-derived",
+    })
+
+
 def screening_score(job: WeeklyJob, crew: WeeklyCrew, condition: HourlyCondition, at_time: datetime) -> int:
     apparent = condition.apparent_temperature_c
     environmental = 8 if apparent <= 35 else 20 if apparent <= 38 else 32 if apparent <= 41 else 45 if apparent <= 44 else 55
@@ -39,14 +79,14 @@ def screening_score(job: WeeklyJob, crew: WeeklyCrew, condition: HourlyCondition
     return max(0, min(100, environmental + workload + acclimatization + ppe + solar))
 
 
-def entry_for(job: WeeklyJob, crew: WeeklyCrew, start: datetime, layer: PlanLayer, days: list[SiteDay]) -> ScheduleEntry:
+def entry_for(job: WeeklyJob, crew: WeeklyCrew, start: datetime, layer: PlanLayer, days: list[SiteDay], spatial_offsets: dict | None = None) -> ScheduleEntry:
     slot = timedelta(minutes=30)
     remaining = job.duration_minutes
     cursor = start
     weighted = 0
     while remaining > 0:
         minutes = min(30, remaining)
-        weighted += screening_score(job, crew, nearest_condition(cursor, days), cursor) * minutes
+        weighted += screening_score(job, crew, task_condition(cursor, job, days, spatial_offsets), cursor) * minutes
         cursor += slot
         remaining -= minutes
     return ScheduleEntry(
@@ -195,4 +235,3 @@ def metric_explanations(metrics: WeeklyMetrics) -> dict[str, MetricExplanation]:
             limitations=["The percentage is threshold-dependent and does not imply injury reduction."],
         ),
     }
-

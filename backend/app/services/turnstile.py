@@ -17,7 +17,7 @@ class TurnstileVerifier:
         if token in self._used_tokens:
             raise TurnstileError("Turnstile token has already been used")
         if not settings.turnstile_secret_key:
-            if settings.weekly_local_auth and token == "local-turnstile-test":
+            if settings.weekly_local_auth and token.startswith("local-turnstile-test"):
                 self._used_tokens.add(token)
                 return
             raise TurnstileError("Turnstile is not configured")
@@ -34,7 +34,7 @@ class TurnstileVerifier:
         result = response.json()
         if not result.get("success"):
             raise TurnstileError("Turnstile validation failed")
-        if result.get("action") not in {None, "provision-site-week"}:
+        if result.get("action") != "provision-site-week":
             raise TurnstileError("Turnstile action did not match")
         hostname = result.get("hostname")
         if hostname and hostname not in settings.turnstile_expected_hostnames:
@@ -43,4 +43,3 @@ class TurnstileVerifier:
 
 
 turnstile_verifier = TurnstileVerifier()
-

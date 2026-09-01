@@ -5,10 +5,14 @@ create table if not exists public.workspaces (
   owner_id uuid primary key references auth.users(id) on delete cascade,
   global_week_start date not null default date '2024-07-15',
   walkthrough_completed boolean not null default false,
+  domain_snapshot jsonb not null default '{}'::jsonb,
   created_at timestamptz not null default now(),
   updated_at timestamptz not null default now(),
   constraint historical_week check (global_week_start >= date '2019-01-01')
 );
+
+alter table public.workspaces
+  add column if not exists domain_snapshot jsonb not null default '{}'::jsonb;
 
 create table if not exists public.sites (
   id uuid primary key default gen_random_uuid(),
@@ -166,6 +170,11 @@ alter table public.provisioning_jobs enable row level security;
 alter table public.live_quota enable row level security;
 alter table public.provider_credit_reservations enable row level security;
 
+drop policy if exists "workspace owner" on public.workspaces;
+drop policy if exists "site owner or curated reader" on public.sites;
+drop policy if exists "site owner writes" on public.sites;
+drop policy if exists "site day owner or curated reader" on public.site_days;
+drop policy if exists "private site day writes" on public.site_days;
 create policy "workspace owner" on public.workspaces for all using (owner_id = auth.uid()) with check (owner_id = auth.uid());
 create policy "site owner or curated reader" on public.sites for select using (owner_id = auth.uid() or curated);
 create policy "site owner writes" on public.sites for all using (owner_id = auth.uid() and not curated) with check (owner_id = auth.uid() and not curated);
@@ -178,18 +187,179 @@ create policy "private site day writes" on public.site_days for all using (
   exists(select 1 from public.sites where sites.id = site_days.site_id and sites.owner_id = auth.uid())
 );
 
-do $$
-declare table_name text;
-begin
-  foreach table_name in array array['crews','jobs','job_dependencies','schedule_versions','schedule_entries','analyses','provisioning_jobs','live_quota']
-  loop
-    execute format('create policy "owner isolation" on public.%I for all using (owner_id = auth.uid()) with check (owner_id = auth.uid())', table_name);
-  end loop;
-end $$;
+drop policy if exists "owner isolation" on public.crews;
+drop policy if exists "owner isolation" on public.jobs;
+drop policy if exists "owner isolation" on public.job_dependencies;
+drop policy if exists "owner isolation" on public.schedule_versions;
+drop policy if exists "owner isolation" on public.schedule_entries;
+drop policy if exists "owner isolation" on public.analyses;
+drop policy if exists "owner isolation" on public.provisioning_jobs;
+drop policy if exists "owner isolation" on public.live_quota;
+
+create policy "owner isolation" on public.crews for all
+  using (owner_id = auth.uid())
+  with check (
+    owner_id = auth.uid()
+    and exists(select 1 from public.sites s where s.id = site_id and s.owner_id = auth.uid() and not s.curated)
+  );
+
+create policy "owner isolation" on public.jobs for all
+  using (owner_id = auth.uid())
+  with check (
+    owner_id = auth.uid()
+    and exists(select 1 from public.sites s where s.id = site_id and s.owner_id = auth.uid() and not s.curated)
+    and exists(select 1 from public.crews c where c.id = assigned_crew_id and c.owner_id = auth.uid() and c.site_id = site_id)
+    and not exists(
+      select 1 from unnest(eligible_crew_ids) eligible_id
+      where not exists(
+        select 1 from public.crews c
+        where c.id = eligible_id and c.owner_id = auth.uid() and c.site_id = site_id
+      )
+    )
+  );
+
+create policy "owner isolation" on public.job_dependencies for all
+  using (owner_id = auth.uid())
+  with check (
+    owner_id = auth.uid()
+    and exists(
+      select 1 from public.jobs job
+      join public.jobs prerequisite on prerequisite.id = depends_on_job_id
+      where job.id = job_id
+        and job.owner_id = auth.uid()
+        and prerequisite.owner_id = auth.uid()
+        and job.site_id = prerequisite.site_id
+    )
+  );
+
+create policy "owner isolation" on public.schedule_versions for all
+  using (owner_id = auth.uid())
+  with check (
+    owner_id = auth.uid()
+    and exists(select 1 from public.sites s where s.id = site_id and s.owner_id = auth.uid() and not s.curated)
+  );
+
+create policy "owner isolation" on public.schedule_entries for all
+  using (owner_id = auth.uid())
+  with check (
+    owner_id = auth.uid()
+    and exists(
+      select 1 from public.schedule_versions version
+      join public.jobs job on job.id = job_id and job.site_id = version.site_id
+      join public.crews crew on crew.id = crew_id and crew.site_id = version.site_id
+      where version.id = schedule_version_id
+        and version.owner_id = auth.uid()
+        and job.owner_id = auth.uid()
+        and crew.owner_id = auth.uid()
+    )
+  );
+
+create policy "owner isolation" on public.analyses for all
+  using (owner_id = auth.uid())
+  with check (
+    owner_id = auth.uid()
+    and exists(select 1 from public.sites s where s.id = site_id and s.owner_id = auth.uid() and not s.curated)
+  );
+
+create policy "owner isolation" on public.provisioning_jobs for all
+  using (owner_id = auth.uid())
+  with check (
+    owner_id = auth.uid()
+    and exists(select 1 from public.sites s where s.id = site_id and s.owner_id = auth.uid() and not s.curated)
+  );
+
+create policy "owner isolation" on public.live_quota for all
+  using (owner_id = auth.uid())
+  with check (
+    owner_id = auth.uid()
+    and (
+      provisioning_job_id is null
+      or exists(
+        select 1 from public.provisioning_jobs job
+        where job.id = provisioning_job_id and job.owner_id = auth.uid()
+      )
+    )
+  );
 
 -- Reservations contain global provider accounting and are never exposed directly
 -- to anonymous clients. Only the server-side secret/service role may access them.
 revoke all on public.provider_credit_reservations from anon, authenticated;
+
+-- Server-only cross-instance guard used before any paid FortyGuard call. This
+-- supplements the user-scoped provisioning snapshot with an atomic global lock.
+create table if not exists public.heatshift_provider_reservations (
+  reservation_key text primary key,
+  owner_id uuid not null references auth.users(id) on delete cascade,
+  request_hash char(64),
+  credits integer not null check (credits > 0),
+  released_at timestamptz,
+  created_at timestamptz not null default now()
+);
+alter table public.heatshift_provider_reservations add column if not exists request_hash char(64);
+create unique index if not exists one_heatshift_live_week_per_owner
+  on public.heatshift_provider_reservations(owner_id);
+create unique index if not exists one_active_heatshift_exact_request
+  on public.heatshift_provider_reservations(request_hash) where request_hash is not null and released_at is null;
+alter table public.heatshift_provider_reservations enable row level security;
+revoke all on public.heatshift_provider_reservations from anon, authenticated;
+
+create or replace function public.claim_heatshift_provider_reservation(
+  p_owner_id uuid,
+  p_reservation_key text,
+  p_request_hash text,
+  p_credits integer,
+  p_provider_remaining integer,
+  p_required_reserve integer
+) returns text
+language plpgsql security definer set search_path = public
+as $$
+declare outstanding bigint;
+begin
+  perform pg_advisory_xact_lock(hashtext('heatshift-provider-credit-reserve'));
+  if exists(select 1 from public.heatshift_provider_reservations where reservation_key = p_reservation_key and owner_id = p_owner_id and released_at is null) then
+    return 'existing';
+  end if;
+  if exists(select 1 from public.heatshift_provider_reservations where request_hash = p_request_hash and released_at is null) then
+    return 'request_in_progress';
+  end if;
+  if exists(select 1 from public.heatshift_provider_reservations where owner_id = p_owner_id and reservation_key <> p_reservation_key) then
+    return 'quota_used';
+  end if;
+  select coalesce(sum(credits), 0) into outstanding
+    from public.heatshift_provider_reservations where released_at is null;
+  if p_provider_remaining - outstanding - p_credits < p_required_reserve then
+    return 'insufficient_credits';
+  end if;
+  insert into public.heatshift_provider_reservations(reservation_key, owner_id, request_hash, credits, released_at)
+    values(p_reservation_key, p_owner_id, p_request_hash, p_credits, null)
+  on conflict(reservation_key) do update
+    set request_hash = excluded.request_hash, credits = excluded.credits, released_at = null;
+  return 'reserved';
+end;
+$$;
+
+create or replace function public.release_heatshift_provider_reservation(p_reservation_key text)
+returns void
+language sql security definer set search_path = public
+as $$
+  update public.heatshift_provider_reservations set released_at = coalesce(released_at, now())
+    where reservation_key = p_reservation_key;
+$$;
+
+drop function if exists public.claim_heatshift_provider_reservation(uuid,text,integer,integer,integer);
+revoke all on function public.claim_heatshift_provider_reservation(uuid,text,text,integer,integer,integer) from public, anon, authenticated;
+revoke all on function public.release_heatshift_provider_reservation(text) from public, anon, authenticated;
+grant execute on function public.claim_heatshift_provider_reservation(uuid,text,text,integer,integer,integer) to service_role;
+grant execute on function public.release_heatshift_provider_reservation(text) to service_role;
+
+create table if not exists public.provider_request_cache (
+  request_hash char(64) primary key,
+  payload jsonb not null,
+  created_at timestamptz not null default now(),
+  updated_at timestamptz not null default now()
+);
+alter table public.provider_request_cache enable row level security;
+revoke all on public.provider_request_cache from anon, authenticated;
 
 create or replace function public.create_anonymous_workspace()
 returns public.workspaces
@@ -205,4 +375,3 @@ end;
 $$;
 
 grant execute on function public.create_anonymous_workspace() to authenticated;
-

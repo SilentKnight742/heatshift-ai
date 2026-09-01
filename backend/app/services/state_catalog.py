@@ -4,11 +4,11 @@ import math
 from typing import Any
 
 from ..models.weekly import GeometryInput
+from .state_boundaries import point_in_state
 
 
-# Approximate bounding boxes are used for fast fail-closed validation. The UI also
-# prevents drawing outside the selected state. Production deployments can replace
-# these boxes with Census boundary polygons without changing the API contract.
+# Bounding boxes provide a fast rejection pass; every accepted vertex is then
+# checked against the decoded US state TopoJSON boundary in state_boundaries.py.
 STATE_CATALOG: dict[str, dict[str, Any]] = {
     "AL": {"name": "Alabama", "bbox": [-88.48, 30.14, -84.89, 35.01]},
     "AK": {"name": "Alaska", "bbox": [-179.15, 51.21, -129.98, 71.44]},
@@ -95,13 +95,35 @@ def normalize_geometry(value: GeometryInput) -> dict:
         assert value.longitude is not None and value.latitude is not None and value.radius_m is not None
         polygon = circle_feature_collection(value.longitude, value.latitude, value.radius_m)
     features = polygon.get("features", [])
-    if polygon.get("type") != "FeatureCollection" or not features:
-        raise ValueError("geometry must be a non-empty GeoJSON FeatureCollection")
+    if polygon.get("type") != "FeatureCollection" or len(features) != 1:
+        raise ValueError("geometry must be a GeoJSON FeatureCollection with exactly one Polygon")
     geometry = features[0].get("geometry", {})
-    ring = geometry.get("coordinates", [[]])[0]
-    if geometry.get("type") != "Polygon" or len(ring) < 4 or ring[0] != ring[-1]:
+    coordinates = geometry.get("coordinates", [])
+    if geometry.get("type") != "Polygon" or len(coordinates) != 1:
+        raise ValueError("site geometry must be one Polygon without holes")
+    ring = coordinates[0]
+    if len(ring) < 4 or len(ring) > 501 or ring[0] != ring[-1]:
         raise ValueError("site geometry must be a closed Polygon")
+    if any(not isinstance(point, list) or len(point) != 2 or not all(isinstance(item, (int, float)) for item in point) for point in ring):
+        raise ValueError("polygon vertices must be longitude/latitude number pairs")
+    if any(not (-180 <= point[0] <= 180 and -90 <= point[1] <= 90) for point in ring):
+        raise ValueError("polygon vertices contain invalid coordinates")
+    if _has_self_intersection(ring):
+        raise ValueError("site polygon must not self-intersect")
     return polygon
+
+
+def _has_self_intersection(ring: list[list[float]]) -> bool:
+    def orientation(a, b, c):
+        return (b[0] - a[0]) * (c[1] - a[1]) - (b[1] - a[1]) * (c[0] - a[0])
+    segments = list(zip(ring, ring[1:], strict=False))
+    for left_index, (a, b) in enumerate(segments):
+        for right_index, (c, d) in enumerate(segments):
+            if right_index <= left_index + 1 or (left_index == 0 and right_index == len(segments) - 1):
+                continue
+            if orientation(a, b, c) * orientation(a, b, d) < 0 and orientation(c, d, a) * orientation(c, d, b) < 0:
+                return True
+    return False
 
 
 def polygon_centroid(polygon: dict) -> tuple[float, float]:
@@ -125,12 +147,22 @@ def validate_in_state(polygon: dict, state_code: str) -> None:
     state = STATE_CATALOG.get(state_code.upper())
     if state is None:
         raise ValueError("unsupported state code")
+    area = polygon_area_square_miles(polygon)
+    if area <= 0.000001:
+        raise ValueError("site polygon must have a positive area")
+    if area > 10:
+        raise ValueError("site area must not exceed 10 mi²")
     west, south, east, north = state["bbox"]
     ring = polygon["features"][0]["geometry"]["coordinates"][0]
     if any(not (west <= longitude <= east and south <= latitude <= north) for longitude, latitude in ring):
         raise ValueError("geometry must remain inside the selected state")
-    if polygon_area_square_miles(polygon) > 10:
-        raise ValueError("site area must not exceed 10 mi²")
+    for left, right in zip(ring, ring[1:], strict=False):
+        steps = min(1000, max(1, math.ceil(max(abs(right[0] - left[0]), abs(right[1] - left[1])) / 0.002)))
+        for step in range(steps + 1):
+            longitude = left[0] + (right[0] - left[0]) * step / steps
+            latitude = left[1] + (right[1] - left[1]) * step / steps
+            if not point_in_state(longitude, latitude, state_code):
+                raise ValueError("geometry must remain inside the selected state boundary")
 
 
 def state_options() -> list[dict[str, str]]:
@@ -138,4 +170,3 @@ def state_options() -> list[dict[str, str]]:
         {"code": code, "name": details["name"]}
         for code, details in sorted(STATE_CATALOG.items(), key=lambda item: item[1]["name"])
     ]
-

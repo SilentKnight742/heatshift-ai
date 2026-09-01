@@ -157,7 +157,13 @@ class FortyGuardClient:
 
     async def get_credit_usage(self) -> dict:
         """Read provider usage without submitting a billable analysis task."""
-        return await self._request("POST", "/v1/system/fetch-api-key-usage", {})
+        if not self.config.fortyguard_api_key:
+            raise FortyGuardError("FORTYGUARD_API_KEY is not configured")
+        return await self._request(
+            "POST",
+            "/v1/system/fetch-api-key-usage",
+            {"api_key": self.config.fortyguard_api_key},
+        )
 
     async def get_activity_status(self, activity_id: str) -> dict:
         if not activity_id or "/" in activity_id:
@@ -171,7 +177,16 @@ class FortyGuardClient:
         initial_delay: float = 2.0,
     ) -> dict:
         for attempt in range(max_attempts):
-            response = await self.get_activity_status(activity_id)
+            try:
+                response = await self.get_activity_status(activity_id)
+            except FortyGuardError as exc:
+                # Newly accepted activities can be briefly absent from the
+                # provider status index. Treat that narrow case as eventual
+                # consistency, while preserving bounded failure behavior.
+                if "HTTP 404" in str(exc) and attempt < min(max_attempts - 1, 14):
+                    await asyncio.sleep(min(initial_delay + attempt, 10))
+                    continue
+                raise
             status = str(response.get("data", {}).get("status", "unknown")).lower()
             if status in {"completed", "succeeded"}:
                 return response

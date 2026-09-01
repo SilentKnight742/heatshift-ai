@@ -23,7 +23,7 @@ from ..models.weekly import (
     WorkspaceState,
 )
 from ..services.auth import WorkspacePrincipal, require_workspace
-from ..services.weekly_ai import answer_question
+from ..services.weekly_ai import answer_question, retrieve_weekly_context
 from ..services.weekly_store import weekly_state_options, weekly_store
 from ..services.provisioning import ProvisioningError, provisioning_service
 
@@ -220,10 +220,26 @@ async def ask_question(
     principal: WorkspacePrincipal = Depends(require_workspace),
 ) -> QuestionResponse:
     workspace = await weekly_store.workspace(principal.user_id)
-    analysis = next(
-        (record.analysis for record in workspace.sites.values() if record.analysis and record.analysis.analysis_id == analysis_id),
+    record = next(
+        (record for record in workspace.sites.values() if record.analysis and record.analysis.analysis_id == analysis_id),
         None,
     )
-    if analysis is None:
+    if record is None or record.analysis is None:
         raise HTTPException(status_code=404, detail="analysis not found in this workspace")
-    return await answer_question(workspace, payload.question, payload.context, analysis)
+    context = dict(payload.context)
+    if context.get("type") == "metric" and context.get("key") in record.analysis.explanations:
+        context["selected_metric"] = record.analysis.explanations[str(context["key"])].model_dump(mode="json")
+    elif context.get("type") == "job":
+        selected = next((item for item in record.jobs if item.job_id == context.get("id")), None)
+        if selected:
+            context["selected_job"] = selected.model_dump(mode="json")
+    elif context.get("type") == "crew":
+        selected = next((item for item in record.crews if item.crew_id == context.get("id")), None)
+        if selected:
+            context["selected_crew"] = selected.model_dump(mode="json")
+    context["retrieved_context"] = retrieve_weekly_context(
+        record.days, record.jobs, record.crews, record.analysis
+    )
+    answer = await answer_question(workspace, payload.question, context, record.analysis)
+    await weekly_store.save(principal.user_id)
+    return answer

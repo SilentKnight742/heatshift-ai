@@ -50,7 +50,12 @@ class Settings:
     )
     fortyguard_credit_reserve: int = int(os.getenv("FORTYGUARD_CREDIT_RESERVE", "200000"))
     fortyguard_site_week_estimate: int = int(os.getenv("FORTYGUARD_SITE_WEEK_ESTIMATE", "64240"))
-    weekly_local_auth: bool = os.getenv("HEATSHIFT_LOCAL_AUTH", "true").lower() == "true"
+    # The header-based adapter exists only so the complete product can be tested
+    # without cloud credentials.  A hosted Vercel runtime must fail closed unless
+    # Supabase JWT verification has explicitly been configured.
+    weekly_local_auth: bool = os.getenv(
+        "HEATSHIFT_LOCAL_AUTH", "false" if os.getenv("VERCEL") else "true"
+    ).lower() == "true"
     cors_origins: tuple[str, ...] = tuple(
         origin.strip()
         for origin in os.getenv(

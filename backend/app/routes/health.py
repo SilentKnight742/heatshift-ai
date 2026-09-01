@@ -22,7 +22,8 @@ async def health() -> dict:
         "deployment": {
             "profile": "zero-cost-demo",
             "stateless_replay_recovery": True,
-            "durable_user_storage": False,
+            "durable_user_storage": bool(settings.supabase_url and settings.supabase_publishable_key),
+            "anonymous_workspace_auth": "supabase" if settings.supabase_jwks_url else "local-test-adapter",
         },
         "fortyguard": {
             "configured": fortyguard.configured,
