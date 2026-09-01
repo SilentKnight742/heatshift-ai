@@ -32,7 +32,7 @@ class _AsyncClient:
 
 
 @pytest.mark.anyio
-async def test_qwen_non_thinking_effort_reaches_responses_payload(monkeypatch) -> None:
+async def test_qwen_38_non_thinking_effort_reaches_responses_payload(monkeypatch) -> None:
     monkeypatch.setattr("app.clients.llm.httpx.AsyncClient", _AsyncClient)
     client = ResponsesClient(Settings(llm_api_key="test-key", llm_reasoning_effort="none"))
 
