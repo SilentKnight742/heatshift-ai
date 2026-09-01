@@ -2,14 +2,14 @@ import Link from "next/link";
 import ProductHeader from "@/components/ProductHeader";
 
 const decisionSteps = [
-  { number: "01", title: "Read the heat", body: "Use 198 real FortyGuard temperature cells and 11 hourly environmental observations from the Phoenix replay.", tone: "mint" },
-  { number: "02", title: "Understand the work", body: "Read each crew, task, workload, PPE burden, allowed time window, dependency, shade condition and fixed commitment.", tone: "blue" },
-  { number: "03", title: "Screen every task", body: "Combine environmental conditions with the human and operational context to produce a transparent 0–100 screening score.", tone: "orange" },
-  { number: "04", title: "Try only valid alternatives", body: "Search 30-minute start times, rejecting crew conflicts, broken dependencies, shortened work and moves outside permitted windows.", tone: "violet" },
-  { number: "05", title: "Explain the feasible plan", body: "Prefer the valid schedule with less high-risk work time, report what moved and keep every remaining alert visible.", tone: "mint" },
+  { number: "01", title: "Read the site", body: "Load hourly conditions and the day's hyperlocal thermal field for the selected worksite.", tone: "mint" },
+  { number: "02", title: "Understand the operation", body: "Read jobs, crews, locations, workload, PPE, timing windows, dependencies, shade and fixed commitments.", tone: "blue" },
+  { number: "03", title: "Screen every task-hour", body: "Combine environmental and operational context in a transparent, versioned 0–100 screening policy.", tone: "orange" },
+  { number: "04", title: "Test workable alternatives", body: "Try 30-minute starts and eligible crews across the week, rejecting every hard-constraint violation.", tone: "violet" },
+  { number: "05", title: "Put the choice in context", body: "Compare exposure, crew load and the exact disruption required, then leave the decision with the manager.", tone: "mint" },
 ];
 
-const agentSteps = ["Observe heat", "Load the shift", "Calculate exposure", "Optimize constraints", "Retrieve guidance", "Create briefing and alerts"];
+const agentSteps = ["Read week conditions", "Load jobs and crews", "Compare plan layers", "Break down metrics", "Retrieve guidance", "Explain residual alerts"];
 
 const researchMetrics = [
   { value: "566", label: "measured exposure sessions", tone: "mint" },
@@ -22,7 +22,7 @@ const currentUsers = [
   ["Operations managers", "Choose when work should happen without losing sight of delivery constraints."],
   ["Safety teams", "Identify high-risk work windows and focus controls where scheduling alone cannot solve the problem."],
   ["Shift planners", "Compare the original shift with a crew-valid, dependency-valid alternative."],
-  ["Site supervisors", "Receive a short action list and worker-facing alerts for residual risk."],
+  ["Site supervisors", "Review a short action list and the jobs that remain above the screening threshold."],
 ];
 
 export default function Home() {
@@ -33,8 +33,8 @@ export default function Home() {
       <section className="marketing-hero">
         <div className="marketing-hero-copy">
           <span className="marketing-kicker"><i /> For operations and safety teams</span>
-          <h1>Move the work.<br /><em>Keep the shift.</em></h1>
-          <p>HeatShift uses real hyperlocal heat evidence to help managers move strenuous work into safer available hours—without dropping tasks, double-booking crews, or hiding the risk that remains.</p>
+          <h1>Plan the week.<br /><em>Respect the heat.</em></h1>
+          <p>HeatShift turns historical hyperlocal heat evidence, jobs and crew constraints into workable weekly schedule alternatives—then shows the exposure reduced, the disruption required and the risk that remains.</p>
           <div className="marketing-actions">
             <a className="primary-link" href="#worked-example">See how the shift changes <span>↓</span></a>
             <Link className="text-link" href="/console">Try the console <span>↗</span></Link>
@@ -46,19 +46,19 @@ export default function Home() {
           </div>
         </div>
         <div className="hero-shift-visual" aria-label="Heavy cargo loading moves from a critical-risk afternoon time to a moderate-risk morning time">
-          <div className="hero-evidence-chip"><i /> Real FortyGuard replay · Phoenix</div>
+          <div className="hero-evidence-chip"><i /> Site conditions → operational decision</div>
           <div className="hero-task-card hero-task-before">
-            <span className="hero-card-label">Before</span>
-            <strong>Heavy cargo loading</strong>
-            <div className="hero-time-row"><b>1:00 PM</b><span className="risk-pill critical">100 · Critical</span></div>
-            <div className="hero-heat-line"><i /><span>Hottest part of the shift</span></div>
+            <span className="hero-card-label">Original weekly plan</span>
+            <strong>Jobs meet the delivery plan</strong>
+            <div className="hero-time-row"><b>But heat and crew load peak together</b><span className="risk-pill critical">Review</span></div>
+            <div className="hero-heat-line"><i /><span>Hot hours · cumulative crew exposure</span></div>
           </div>
-          <div className="hero-move-arrow"><span>Move 6½ hours earlier</span><b aria-hidden="true">↓</b></div>
+          <div className="hero-move-arrow"><span>Test only feasible changes</span><b aria-hidden="true">↓</b></div>
           <div className="hero-task-card hero-task-after">
-            <span className="hero-card-label">HeatShift plan</span>
-            <strong>Heavy cargo loading</strong>
-            <div className="hero-time-row"><b>6:30 AM</b><span className="risk-pill moderate">49 · Moderate</span></div>
-            <div className="hero-retained-line"><i /> Same crew · same duration · no work dropped</div>
+            <span className="hero-card-label">HeatShift alternative</span>
+            <strong>Move what can move</strong>
+            <div className="hero-time-row"><b>Keep fixed work and dependencies intact</b><span className="risk-pill moderate">Valid</span></div>
+            <div className="hero-retained-line"><i /> Manager edits the Working plan before applying it</div>
           </div>
         </div>
       </section>
@@ -82,10 +82,19 @@ export default function Home() {
         </div>
       </section>
 
+      <section className="decision-method product-dimensions">
+        <div className="section-heading method-intro"><span className="section-number">02</span><span className="eyebrow">Three questions behind every recommendation</span><h2>Less heat exposure is useful only when the plan still works.</h2><p>HeatShift keeps the environmental, human and logistical sides visible instead of hiding them inside one opaque score.</p></div>
+        <div className="decision-dimensions">
+          <article className="method-detail-card scoring-card"><span className="eyebrow">Environment</span><h3>Site Thermal Burden</h3><p>Apparent-temperature degree-hours above a disclosed 35°C product baseline show how intense and persistent the week is. Humidity, wet bulb, solar and land-cover context stay visible beside it.</p></article>
+          <article className="method-detail-card constraint-card"><span className="eyebrow">People</span><h3>Crew Exposure Load</h3><p>Risk-weighted worker-hours accumulate task score, duration and crew size. Managers can compare the total, the highest-loaded crew and the spread between crews.</p></article>
+          <article className="method-detail-card disruption-card"><span className="eyebrow">Logistics</span><h3>Operational Disruption</h3><p>Minutes shifted, crew changes, cross-day moves, deferrals and cancellations are reported separately. HeatShift never disguises them as a made-up combined score.</p></article>
+        </div>
+      </section>
+
       <section className="worked-example" id="worked-example">
         <div className="example-heading">
-          <div><span className="section-number">02</span><span className="eyebrow">One complete replay</span><h2>Two tasks move. Four stay fixed. The work is preserved.</h2></div>
-          <p>This demonstration combines a <strong>real FortyGuard historical replay</strong> with a <strong>fictional logistics-yard shift</strong>. It shows what the engine proposes—not what a company actually implemented.</p>
+          <div><span className="section-number">03</span><span className="eyebrow">One earlier one-day example</span><h2>Two tasks moved. Four stayed fixed. The work was preserved.</h2></div>
+          <p>Phoenix is one example, not the product. This replay combines <strong>real FortyGuard historical evidence</strong> with a <strong>fictional logistics-yard shift</strong> to make the calculation easy to inspect.</p>
         </div>
         <div className="movement-board" aria-label="Original and proposed task times">
           <div className="movement-board-head"><span>Original shift</span><span>Proposed shift</span><span>Change in peak score</span></div>
@@ -114,19 +123,19 @@ export default function Home() {
       </section>
 
       <section className="decision-method" id="method">
-        <div className="section-heading method-intro"><span className="section-number">03</span><span className="eyebrow">How the proposal is made</span><h2>HeatShift searches for a better shift, not an impossible one.</h2><p>The calculation is deterministic: the same evidence, policy and work plan produce the same result. The system tests alternatives and rejects any schedule that breaks the operation.</p></div>
+        <div className="section-heading method-intro"><span className="section-number">04</span><span className="eyebrow">How the proposal is made</span><h2>HeatShift searches for a better week, not an impossible one.</h2><p>The calculation is deterministic: the same evidence, policy and operation produce the same result. It searches within each job's explicit window and rejects any schedule that breaks the operation.</p></div>
         <div className="decision-flow" aria-label="Five stages of the HeatShift decision process">
           {decisionSteps.map((step) => <article className={`decision-step step-${step.tone}`} key={step.number}><span>{step.number}</span><strong>{step.title}</strong><p>{step.body}</p></article>)}
         </div>
         <div className="method-detail-grid">
           <article className="method-detail-card scoring-card"><span className="eyebrow">What affects a task score?</span><h3>Temperature is only the beginning.</h3><div className="factor-stack" aria-label="Risk score factors"><span>Apparent temperature</span><span>Workload</span><span>PPE burden</span><span>Acclimatization</span><span>Sun or shade</span></div><p>The policy adds transparent points for these factors, then limits the screening score to a 0–100 range. A task at 50 or higher contributes to the high-risk worker-minute metric.</p></article>
-          <article className="method-detail-card constraint-card"><span className="eyebrow">What cannot the optimizer break?</span><h3>The work still has rules.</h3><ul><li>Fixed tasks cannot move.</li><li>Crews cannot be double-booked.</li><li>Dependencies must stay in order.</li><li>Tasks must remain inside allowed windows.</li><li>Duration, crew assignment and task count are preserved.</li></ul></article>
+          <article className="method-detail-card constraint-card"><span className="eyebrow">What cannot the optimizer break?</span><h3>The work still has rules.</h3><ul><li>Fixed, completed and in-progress jobs cannot move.</li><li>Crews cannot be double-booked.</li><li>Dependencies must stay in order across days.</li><li>Jobs must remain inside allowed date and time windows.</li><li>Reassignment uses eligible crews only; duration never changes.</li></ul></article>
         </div>
-        <details className="technical-details"><summary>See the advanced calculation logic <span>+</span></summary><div><p><strong>Candidate generation:</strong> movable tasks are evaluated at 30-minute starts between their earliest start and latest permitted finish.</p><p><strong>Feasibility:</strong> candidates are discarded if they overlap another task for the same crew, violate a dependency, change duration or leave the permitted shift window.</p><p><strong>Objective:</strong> the engine prioritizes lower worker time at scores of 50 or higher and applies a disruption penalty so it does not move work without a measurable reason.</p><p><strong>Reproducibility:</strong> official scores, schedules and metrics are produced by deterministic code rather than generated by a language model.</p></div></details>
+        <details className="technical-details"><summary>See the advanced calculation logic <span>+</span></summary><div><p><strong>Candidate generation:</strong> pending movable jobs are evaluated at 30-minute starts between their earliest start and latest permitted finish, including another day only when the job window permits it.</p><p><strong>Feasibility:</strong> candidates are discarded if they overlap a crew, violate a dependency, change duration, use an ineligible crew or leave the site, week or shift bounds.</p><p><strong>Objective:</strong> first keep every hard constraint valid; then reduce score-50 worker-minutes, total Crew Exposure Load, the highest crew load and finally logistical disruption.</p><p><strong>Reproducibility:</strong> official schedules and metrics are deterministic. The scheduler returns a validated feasible plan, not a claim of mathematical global optimality.</p></div></details>
       </section>
 
       <section className="agent-explainer" id="agent">
-        <div className="agent-explainer-copy"><span className="section-number">04</span><span className="eyebrow">The AI operations agent</span><h2>The AI explains the decision. It does not invent the numbers.</h2><p>The agent calls a fixed set of tools to collect evidence, load the work plan, calculate exposure, optimize the schedule, retrieve curated guidance and prepare alerts.</p><div className="agent-authority-note"><i>✓</i><p><strong>Protected boundary:</strong> schedules, scores and official metrics come from validated deterministic tools. The model can explain them, but it cannot replace them.</p></div></div>
+        <div className="agent-explainer-copy"><span className="section-number">05</span><span className="eyebrow">The AI operations agent</span><h2>The AI explains the decision. It does not invent the numbers.</h2><p>Open any site, job, crew or metric for its deterministic formula and inputs first. Then ask a contextual question when plain language would help.</p><div className="agent-authority-note"><i>✓</i><p><strong>Protected boundary:</strong> schedules, scores and official metrics come from validated deterministic tools. Unsupported model numbers are rejected and replaced by a grounded fallback.</p></div></div>
         <div className="agent-process-card">
           <div className="agent-process-head"><span>AI</span><div><small>Auditable tool sequence</small><strong>From evidence to action</strong></div></div>
           <ol>{agentSteps.map((step, index) => <li key={step}><span>{String(index + 1).padStart(2, "0")}</span><strong>{step}</strong><i>✓</i></li>)}</ol>
@@ -136,7 +145,7 @@ export default function Home() {
       </section>
 
       <section className="research-section" id="research">
-        <div className="research-question"><span className="section-number">05</span><span className="eyebrow">Measured research evidence</span><h2>Do higher HeatShift scores correspond to worse measured heat-related work loss?</h2><p>We applied the unchanged HeatShift screening policy to a public slice of the HEAT-SHIELD human-exposure dataset. The score was not trained or fitted on these records.</p></div>
+        <div className="research-question"><span className="section-number">06</span><span className="eyebrow">Measured research evidence</span><h2>Do higher HeatShift scores correspond to worse measured heat-related work loss?</h2><p>We applied the unchanged HeatShift screening policy to a public slice of the HEAT-SHIELD human-exposure dataset. The score was not trained or fitted on these records.</p></div>
         <div className="research-metric-grid" aria-label="HEAT-SHIELD dataset summary">{researchMetrics.map((metric) => <article className={`research-metric metric-${metric.tone}`} key={metric.label}><strong>{metric.value}</strong><span>{metric.label}</span></article>)}</div>
         <div className="research-result-grid">
           <article className="capacity-chart-card"><span className="eyebrow">Measured one-hour work-capacity loss</span><h3>Sessions with higher screening scores also showed much greater measured loss.</h3><div className="capacity-bars"><div><div><span>Score below 50</span><strong>14.37%</strong></div><i className="capacity-low" style={{ width: "28.3%" }} /></div><div><div><span>Score 50 or higher</span><strong>50.82%</strong></div><i className="capacity-high" style={{ width: "100%" }} /></div></div><div className="difference-callout"><strong>+36.45</strong><span>percentage-point difference between the two groups</span></div></article>
@@ -146,23 +155,23 @@ export default function Home() {
       </section>
 
       <section className="evidence-boundaries" id="evidence">
-        <div className="section-heading evidence-boundary-heading"><span className="section-number">06</span><span className="eyebrow">What is real—and what is simulated</span><h2>Two evidence layers, clearly separated.</h2><p>The environmental and research evidence is real. The company, crews, tasks and manager interactions are fictional so the product can be demonstrated without exposing an actual workforce.</p></div>
+        <div className="section-heading evidence-boundary-heading"><span className="section-number">07</span><span className="eyebrow">What is real—and what is simulated</span><h2>Three data layers, clearly separated.</h2><p>Provider evidence, fictional operations and HeatShift-derived values are labeled separately. A cached site is never reused for a different place or week.</p></div>
         <div className="real-fiction-grid">
-          <article className="real-evidence-card"><div className="boundary-card-head"><i /> <span>Real evidence</span></div><ul><li><strong>198</strong> FortyGuard temperature cells at 100 m resolution</li><li><strong>11</strong> hourly environmental observations</li><li><strong>6</strong> saved activity IDs authenticated with FortyGuard</li><li><strong>566</strong> HEAT-SHIELD exposure records</li><li>Independent reproduction of published calculations</li></ul></article>
-          <article className="fictional-evidence-card"><div className="boundary-card-head"><i /> <span>Fictional demonstration</span></div><ul><li>Company and worksite identity</li><li>Crew names and worker counts</li><li>Tasks, dependencies and shift schedule</li><li>Cooling-zone placement</li><li>Manager and worker interactions</li></ul></article>
+          <article className="real-evidence-card"><div className="boundary-card-head"><i /> <span>Real provider and research evidence</span></div><ul><li>Daily 100m FortyGuard thermal cells for each cached site-week</li><li>Hourly environmental conditions for the selected date</li><li>Provider activity IDs and integrity hashes</li><li><strong>566</strong> public HEAT-SHIELD exposure sessions</li><li>Independent reproduction of published benchmark calculations</li></ul></article>
+          <article className="fictional-evidence-card"><div className="boundary-card-head"><i /> <span>Fictional and derived</span></div><ul><li>Company, site purpose, jobs and crew identities are fictional</li><li>Schedules, dependencies and manager actions are simulated</li><li>Hourly cell values are disclosed HeatShift interpolations</li><li>Building values are cell intersections—not sensor readings</li><li>All recommendations remain screening-level decision support</li></ul></article>
         </div>
       </section>
 
       <section className="users-and-scope" id="scope">
-        <div className="section-heading scope-heading"><span className="section-number">07</span><span className="eyebrow">Who this is for</span><h2>Decision support for the people who plan and supervise outdoor work.</h2></div>
+        <div className="section-heading scope-heading"><span className="section-number">08</span><span className="eyebrow">Who this is for</span><h2>Decision support for the people who plan and supervise outdoor work.</h2></div>
         <div className="user-grid">{currentUsers.map(([title, body], index) => <article key={title}><span>{String(index + 1).padStart(2, "0")}</span><strong>{title}</strong><p>{body}</p></article>)}</div>
-        <div className="scope-status-grid"><article><span>Available now</span><h3>A working historical-replay proof of concept</h3><p>Create fictional operations, evaluate them against a pinned real Phoenix environment, compare the original and optimized shift, inspect alerts and audit the evidence.</p></article><article><span>Production direction</span><h3>Live, organization-ready operations</h3><p>Future work includes live site feeds, organization accounts, saved and shared scenarios, configurable approved policies, multi-site planning and notification integrations.</p></article></div>
+        <div className="scope-status-grid"><article><span>Available now</span><h3>A seven-day, multi-site historical simulator</h3><p>Move across states, sites, days and hours; manage fictional jobs and crews; compare Original, HeatShift and Working plans; inspect every metric and use the map even when WebGL fails.</p></article><article><span>Production direction</span><h3>Organization-approved operating policy</h3><p>Next steps include named organization accounts, live operational feeds, role permissions, configurable reviewed policies, shared approvals, notifications and field-system integrations.</p></article></div>
         <aside className="safety-scope"><strong>Screening-level decision support</strong><p>HeatShift does not diagnose illness, prescribe medical treatment or replace on-site WBGT measurement, emergency procedures, applicable regulation or a qualified safety professional.</p></aside>
       </section>
 
       <section className="console-entry">
-        <div className="console-entry-copy"><span className="section-number">08</span><span className="eyebrow">Try the complete workflow</span><h2>Build a shift. Run the agent. Review the decision.</h2><p>The console starts with the reference replay, but you can replace its fictional crews and tasks with your own scenario.</p><Link className="primary-link light" href="/console">Open the HeatShift console <span>↗</span></Link></div>
-        <ol className="console-entry-steps"><li><span>1</span><div><strong>Choose a starting point</strong><p>Use the reference scenario or create a new fictional operation.</p></div></li><li><span>2</span><div><strong>Add the work constraints</strong><p>Describe crews, tasks, workload, PPE, timing windows and dependencies.</p></div></li><li><span>3</span><div><strong>Run and review</strong><p>See what moved, why it moved, what remained fixed and which alerts still need human action.</p></div></li></ol>
+        <div className="console-entry-copy"><span className="section-number">09</span><span className="eyebrow">Try the complete workflow</span><h2>Choose a site. Plan the week. Make the call.</h2><p>Start with a curated operation, move through its evidence hour by hour, or create a private fictional site and operation of your own.</p><Link className="primary-link light" href="/console">Open the HeatShift console <span>↗</span></Link></div>
+        <ol className="console-entry-steps"><li><span>1</span><div><strong>Choose state, site and week</strong><p>See only evidence that belongs to that place and date.</p></div></li><li><span>2</span><div><strong>Manage jobs and crews</strong><p>Set workload, PPE, eligibility, timing windows, dependencies, shade and status.</p></div></li><li><span>3</span><div><strong>Compare and edit</strong><p>Inspect the proposal, drag the Working plan and keep every residual alert visible.</p></div></li></ol>
       </section>
 
       <footer className="marketing-footer"><span>HeatShift AI</span><p>Real environmental evidence · fictional operations · deterministic metrics · human decision required.</p></footer>
