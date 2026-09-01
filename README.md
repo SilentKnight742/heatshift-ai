@@ -51,6 +51,14 @@ python3 scripts/seed_curated_portfolio.py
 python3 scripts/seed_curated_portfolio.py --execute
 ```
 
+The command above is the explicit paid acquisition tool. Once the normalized
+files exist, seed those checked-in files into Supabase without any provider call:
+
+```bash
+python3 scripts/seed_supabase_curated_portfolio.py
+python3 scripts/seed_supabase_curated_portfolio.py --execute
+```
+
 `--execute` is the only mode that performs credit-consuming calls. It verifies provider usage, preserves a 200,000-credit reserve, checkpoints every activity ID, and never repeats a completed stage. CI never calls FortyGuard.
 
 ## Architecture
