@@ -113,7 +113,7 @@ def test_heatshield_evaluator_detects_metric_profile_and_scope_tampering() -> No
     }
 
 
-def test_optional_provider_authentication_compares_all_six_results(
+def test_optional_provider_authentication_compares_all_completed_results(
     monkeypatch: pytest.MonkeyPatch,
 ) -> None:
     responses = {}
@@ -121,6 +121,21 @@ def test_optional_provider_authentication_compares_all_six_results(
         for kind in ("heatmap", "environment"):
             response = capture[f"{kind}_response"]
             responses[response["data"]["activity_id"]] = response
+    manifest = json.loads((ROOT / "claim_evaluation/evidence_manifest.json").read_text())
+    for site in manifest["curated_site_weeks"].values():
+        identifiers = [
+            *site["heatmap_activity_ids"],
+            *site["environmental_activity_ids"],
+            site["satellite_activity_id"],
+        ]
+        for activity_id in identifiers:
+            responses[activity_id] = {
+                "data": {
+                    "activity_id": activity_id,
+                    "status": "Completed",
+                    "result": {"verified": True},
+                }
+            }
 
     def provider_status(url: str, **_kwargs):
         activity_id = url.rsplit("/", 1)[-1]
@@ -133,7 +148,7 @@ def test_optional_provider_authentication_compares_all_six_results(
         check for check in report["checks"] if check["check_id"] == "PROV-EXT"
     )
     assert provider_check["status"] == "PASS"
-    assert "six read-only status results match" in provider_check["evidence"]
+    assert "81 read-only status results match" in provider_check["evidence"]
 
 
 def test_complete_backend_result_matches_independent_oracle() -> None:

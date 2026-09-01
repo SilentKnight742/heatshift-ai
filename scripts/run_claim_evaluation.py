@@ -41,7 +41,7 @@ def main() -> int:
         "--verify-provider",
         action="store_true",
         help=(
-            "Read-only re-fetch all six activity IDs from FortyGuard. Requires "
+            "Read-only re-fetch all 81 completed activity IDs from FortyGuard. Requires "
             "FORTYGUARD_API_KEY and does not submit new activities."
         ),
     )

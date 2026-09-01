@@ -351,9 +351,9 @@ def _audit_heatshield_repository(
 def audit_repository(root: Path, verify_provider: bool = False) -> ClaimAudit:
     root = root.resolve()
     audit = ClaimAudit()
-    manifest = _load_json(
-        root / "claim_evaluation/evidence_manifest.json"
-    )["sha256"]
+    manifest_document = _load_json(root / "claim_evaluation/evidence_manifest.json")
+    manifest = manifest_document["sha256"]
+    curated_site_weeks = manifest_document.get("curated_site_weeks", {})
     mismatches = []
     for relative_path, expected in manifest.items():
         actual = hashlib.sha256((root / relative_path).read_bytes()).hexdigest()
@@ -538,8 +538,14 @@ def audit_repository(root: Path, verify_provider: bool = False) -> ClaimAudit:
         )
 
     if verify_provider:
-        _audit_provider_authenticity(audit, captures)
+        _audit_provider_authenticity(audit, captures, curated_site_weeks)
     else:
+        curated_count = sum(
+            len(site.get("heatmap_activity_ids", []))
+            + len(site.get("environmental_activity_ids", []))
+            + (1 if site.get("satellite_activity_id") else 0)
+            for site in curated_site_weeks.values()
+        )
         audit.unverified(
             "PROV-EXT",
             "provenance",
@@ -547,8 +553,8 @@ def audit_repository(root: Path, verify_provider: bool = False) -> ClaimAudit:
             (
                 "Internal structure, distinct UUIDs, response status, and arithmetic "
                 "are consistent, but repository files are not provider-signed. Run "
-                "with --verify-provider and FORTYGUARD_API_KEY to re-fetch all six "
-                "activity IDs read-only."
+                "with --verify-provider and FORTYGUARD_API_KEY to re-fetch all "
+                f"{6 + curated_count} completed activity IDs read-only."
             ),
         )
     return audit
@@ -589,7 +595,9 @@ def _request_json(
 
 
 def _audit_provider_authenticity(
-    audit: ClaimAudit, captures: list[tuple[str, Json]]
+    audit: ClaimAudit,
+    captures: list[tuple[str, Json]],
+    curated_site_weeks: Json,
 ) -> None:
     api_key = os.getenv("FORTYGUARD_API_KEY")
     if not api_key:
@@ -603,6 +611,12 @@ def _audit_provider_authenticity(
     base_url = os.getenv("FORTYGUARD_BASE_URL", "https://api.fortyguard.com").rstrip("/")
     mismatches: list[str] = []
     checked = 0
+    expected = 6 + sum(
+        len(site.get("heatmap_activity_ids", []))
+        + len(site.get("environmental_activity_ids", []))
+        + (1 if site.get("satellite_activity_id") else 0)
+        for site in curated_site_weeks.values()
+    )
     for day_text, capture in captures:
         for kind in ("heatmap", "environment"):
             saved = capture[f"{kind}_response"]
@@ -624,12 +638,42 @@ def _audit_provider_authenticity(
                 saved.get("data", {}).get("result")
             ):
                 mismatches.append(f"{day_text} {kind}: provider result differs")
+
+    for site_key, site in curated_site_weeks.items():
+        grouped = {
+            "heatmap": site.get("heatmap_activity_ids", []),
+            "environment": site.get("environmental_activity_ids", []),
+            "satellite": [site["satellite_activity_id"]]
+            if site.get("satellite_activity_id")
+            else [],
+        }
+        for kind, identifiers in grouped.items():
+            for activity_id in identifiers:
+                try:
+                    status, _, live, _ = _request_json(
+                        f"{base_url}/v1/status/{activity_id}",
+                        headers={"api-key": api_key},
+                        timeout=45,
+                    )
+                except OSError as exc:
+                    mismatches.append(f"{site_key} {kind} {activity_id}: request failed: {exc}")
+                    continue
+                checked += 1
+                provider_data = live.get("data", {}) if isinstance(live, dict) else {}
+                if status != 200:
+                    mismatches.append(f"{site_key} {kind} {activity_id}: HTTP {status}")
+                elif str(provider_data.get("activity_id")) != str(activity_id):
+                    mismatches.append(f"{site_key} {kind} {activity_id}: provider ID differs")
+                elif str(provider_data.get("status", "")).lower() != "completed":
+                    mismatches.append(f"{site_key} {kind} {activity_id}: provider status is not Completed")
+                elif not provider_data.get("result"):
+                    mismatches.append(f"{site_key} {kind} {activity_id}: provider result is empty")
     audit.record(
         "PROV-EXT",
         "provenance",
-        checked == 6 and not mismatches,
-        "All six saved activity results authenticate against the provider's status API.",
-        "; ".join(mismatches) if mismatches else "six read-only status results match",
+        checked == expected and not mismatches,
+        f"All {expected} completed saved activity results authenticate against the provider's status API.",
+        "; ".join(mismatches) if mismatches else f"{expected} read-only status results match",
     )
 
 

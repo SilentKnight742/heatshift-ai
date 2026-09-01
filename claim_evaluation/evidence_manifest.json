@@ -9,7 +9,46 @@
     "data/demo/policy_rules.json": "0c43d6bbfcc7accbc6133cd3f16c61679ad934af3a74a8c9b86aa713b379fcee",
     "data/demo/shift.json": "ebeb2f25c034e03726f64447193f0fbd5902048437a30c9e8edb52715848dc4b",
     "data/demo/site.geojson": "05d1994ed5189f731c7aaa95032b0d1b876a6c4d3b7bfe447cf4cfa15b998437",
+    "data/curated/desertline-phoenix/week-2024-07-15.json": "f46171788d3b6f66dae9cc257728fe3e2f14a07326948b26789c0403921c1b55",
+    "data/curated/gulfgate-houston/week-2024-07-15.json": "42252de6a2b2954126942b3fb4a6ee63f2e3633dab841c90ace555d59baef616",
+    "data/curated/metroworks-new-york/week-2024-07-15.json": "25d8098fb2e4b6e17c0c59281f50d66b4042c425b49a8c5ec24c4ebc20d2c1fa",
+    "data/curated/silverroad-las-vegas/week-2024-07-15.json": "8e76aa3478597f91381797d3866ee820f19978d23bea5abfaa67a7fb7872c0df",
+    "data/curated/sungrid-miami/week-2024-07-15.json": "206e7c30af1eae82451a04d26333abc9bce65a2921edbb40b9b13c5bcb84752b",
     "data/validation/heatshield_provenance.json": "93856d20aa53291f7919dea5d8e2000379916923edcfc1f6c429b016dbfae456",
     "data/validation/heatshield_trials.csv": "f80db381ab856b5720a84f27090c9b7988ff17bf29998f800b73458b8f1113d9"
+  },
+  "curated_site_weeks": {
+    "desertline-phoenix": {
+      "week_start": "2024-07-15",
+      "heatmap_activity_ids": ["ec49b0b2-b067-422b-acb7-ab25fd1c6589", "47429e74-5f6e-4582-9638-7ff6d6e1965d", "72e47853-51fb-4d83-8ba9-7dd9c5d8baf4", "99c17383-6462-4f38-9516-078161f90d02", "0a175fa5-42f4-44c6-90da-3ea9ef8044a4", "e10a8232-0309-4869-a3ab-bf9310b27f59", "6a823d21-e1de-44c2-a3ab-f5a6f5c353ed"],
+      "environmental_activity_ids": ["64027022-d35f-4b96-af8b-9ac15b6f5c28", "b16c2000-7596-42b0-88a6-7bf50d351e77", "0d622890-64b3-476f-9ea5-024eac97d6c2", "2d2ae14c-0d20-4f88-9439-0e71eb104d47", "cdca02f7-e0d7-4c8f-8cfb-9743539e9268", "61df71d5-eb22-4f26-9bdc-43fc0e4d81ef", "55d4f641-a478-428a-9838-dfc3ef237d92"],
+      "satellite_activity_id": "bf607ba8-3fad-425e-9c95-771feceaef0a",
+      "abandoned_environmental_activity_ids": ["16c1b603-99fb-4be7-8b74-4212a61450bf"]
+    },
+    "gulfgate-houston": {
+      "week_start": "2024-07-15",
+      "heatmap_activity_ids": ["8d8528ba-616d-4289-900a-7eaa96b9058a", "db120ec2-799e-4eaa-a222-89989720395c", "63ccff02-73a7-4010-924c-5b1c2b1e66a1", "bdc5a425-619a-4ab1-9f86-99edc5fc78ca", "674a9718-084e-45e1-ac96-6b886f73c286", "ccd27002-262a-45a8-9587-a184c3889d4a", "a6d9996c-7981-410d-acb6-02ddec6e781c"],
+      "environmental_activity_ids": ["6d0ecb78-f2dc-4102-a15e-ef75933cafd9", "fe8ea2bc-1fe9-43fb-834a-d4f52e78201b", "e9ff8510-012b-4902-aa0f-b0fe922ea196", "098a45ef-48c7-4276-a72b-bb82dc23af04", "7ffb3626-e1af-4b96-8329-82d94b02f5dc", "e907bc0b-fddc-4d63-b61e-cd6cb847d960", "e649a319-3bc3-4150-98b9-be7dec6c250e"],
+      "satellite_activity_id": "993557da-ed71-44dd-836e-a96d465dbe89"
+    },
+    "metroworks-new-york": {
+      "week_start": "2024-07-15",
+      "heatmap_activity_ids": ["c6259bd8-0f45-4484-849b-daf7e7bcea51", "98d91ff4-69d2-43c1-9817-3b4dde09ce93", "5b395d11-2b71-492a-8970-2b4b863bd983", "6c5bf8a6-49e3-4c21-b00b-2dfb9794b47e", "e537c369-cd38-4c84-9cc5-58604ae42bff", "187d59fb-7073-4235-82c0-cf1a79eb427e", "ce48d935-e3c5-440f-9b66-a3de81b91351"],
+      "environmental_activity_ids": ["108589ae-684e-4e0f-8920-509a90b4f284", "53c879a8-0d2f-4f0f-a881-b9297c476e35", "001df042-db41-4ca9-be06-159c2c7644d9", "0f9108ac-357b-4391-9740-8d3c4affa832", "59eb5cc5-2416-44ab-9d7f-0720f8d2ba50", "a0ecd643-190b-4c5f-835e-ceee584bb29a", "15bbc706-7cdd-4a3d-bca2-73b015f5749c"],
+      "satellite_activity_id": "cdff82a1-e44c-4360-adae-c4392361fd63"
+    },
+    "silverroad-las-vegas": {
+      "week_start": "2024-07-15",
+      "heatmap_activity_ids": ["0a2b67e6-bbdc-45bf-a413-79a8a63f4c23", "cb42d614-d4a0-4e85-965f-351f53e795ac", "35f3856b-1234-4379-b276-3c816c4ff377", "20ed8936-16e3-4a92-9e15-228163092424", "5c37514c-2b85-46d2-b71e-0a90736d3f51", "3d29d8e3-34f8-492d-bc0e-7c7e8c570465", "dc60c7c4-8750-4892-a11e-ca27565bc730"],
+      "environmental_activity_ids": ["52aa7aff-4624-49fa-ab5a-0315b72b60f4", "42554e6d-2b1d-4f77-983f-b5c1e8dce71c", "89448126-328f-4874-b8e0-363dc4750069", "376ab1cf-8e21-4c1f-abd8-ebe9eeaa2e39", "e7d8f334-ee23-4a3f-bd1f-aa17171760c8", "008d2829-3c17-44bb-b7bc-5b062755b638", "2637a261-6640-4190-bb3d-e1501679c1be"],
+      "satellite_activity_id": "abfe6468-fcf4-4a3b-8ded-8dddbc453aae"
+    },
+    "sungrid-miami": {
+      "week_start": "2024-07-15",
+      "heatmap_activity_ids": ["7ab5b74d-7261-40cd-8482-51cafcb8fdb6", "50b371f4-e115-4549-a3d7-daaecc99ea16", "aa5d641b-5a9a-408b-a2a0-3db57724d017", "896dde88-3140-480d-9fdf-99167b024ebb", "a6d77fb2-d47a-4cc6-8bac-9298d68ca122", "d2da8035-43ed-4a33-b320-6777a54fc743", "e2656124-7bf3-462b-a077-c1d303f2da6b"],
+      "environmental_activity_ids": ["35766a31-7b76-4da5-8736-7658ebf069c5", "d131d5d6-8ca6-426b-a0fe-fd29bcf2888a", "5920b5a8-bf84-45fa-a683-5fc9da1ba77a", "653ba6e7-6e00-47dc-8aea-5548d117c20b", "47015cf7-ec13-4cb0-a3ea-16455294d143", "64b08c61-a607-4ec3-87b4-060474994e0e", "f420a850-9065-4417-9597-d4e0abfd7f5f"],
+      "satellite_activity_id": "f78dd332-efb3-4f2a-befd-7b44c42d3833",
+      "abandoned_environmental_activity_ids": ["6793e5a3-3db7-40e3-a6a6-cc235d9b3862"]
+    }
   }
 }
