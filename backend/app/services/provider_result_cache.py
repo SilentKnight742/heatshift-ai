@@ -7,6 +7,7 @@ import httpx
 from fastapi.encoders import jsonable_encoder
 
 from ..config import settings
+from .supabase_admin import supabase_admin_headers
 
 
 class ProviderResultCacheError(RuntimeError):
@@ -26,11 +27,7 @@ class ProviderResultCache:
     def _headers(self) -> dict[str, str]:
         if not settings.supabase_secret_key:
             raise ProviderResultCacheError("Server-side Supabase secret is not configured")
-        return {
-            "apikey": settings.supabase_secret_key,
-            "authorization": f"Bearer {settings.supabase_secret_key}",
-            "content-type": "application/json",
-        }
+        return supabase_admin_headers(settings.supabase_secret_key)
 
     async def get(self, request_hash: str) -> dict[str, Any] | None:
         if request_hash in self._memory:

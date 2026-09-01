@@ -106,6 +106,10 @@ FORTYGUARD_SITE_WEEK_ESTIMATE=64240
 HEATSHIFT_LOCAL_AUTH=false
 ```
 
+Use Supabase's current `sb_publishable_...` value for the publishable variables and
+the current `sb_secret_...` value for `SUPABASE_SECRET_KEY`. A legacy
+`service_role` key remains compatible, but must never be exposed to the frontend.
+
 Turnstile must allow localhost, preview, and production hostnames. Live provisioning fails before any provider submission if identity, Turnstile, geometry, date, quota, usage, or reserve validation fails. Supabase Free and Vercel Hobby are the intended zero-cost hackathon stack; no automatic paid overage is assumed.
 
 ## Public API

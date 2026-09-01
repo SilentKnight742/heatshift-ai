@@ -3,6 +3,7 @@ from __future__ import annotations
 import httpx
 
 from ..config import settings
+from .supabase_admin import supabase_admin_headers
 
 
 class ProviderReservationError(RuntimeError):
@@ -17,11 +18,7 @@ class ProviderReservationGuard:
     def _headers(self) -> dict[str, str]:
         if not settings.supabase_secret_key:
             raise ProviderReservationError("Server-side Supabase secret is not configured")
-        return {
-            "apikey": settings.supabase_secret_key,
-            "authorization": f"Bearer {settings.supabase_secret_key}",
-            "content-type": "application/json",
-        }
+        return supabase_admin_headers(settings.supabase_secret_key)
 
     async def claim(self, owner_id: str, key: str, request_hash: str, provider_remaining: int) -> str | None:
         if not self.enabled:

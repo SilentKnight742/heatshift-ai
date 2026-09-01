@@ -23,6 +23,7 @@ from app.services.state_catalog import (
     state_options,
     validate_in_state,
 )
+from app.services.supabase_admin import supabase_admin_headers
 from app.services.turnstile import TurnstileError, TurnstileVerifier
 from app.services.weekly_ai import contradicts_analysis, is_numerically_grounded
 from app.services.weekly_metrics import THERMAL_BURDEN_BASELINE_C, entry_for, site_thermal_burden
@@ -38,6 +39,16 @@ def test_health_auth_mode_distinguishes_supabase_local_and_fail_closed():
     assert _anonymous_workspace_auth_mode("https://example.supabase.co", "publishable", False) == "supabase"
     assert _anonymous_workspace_auth_mode(None, None, True) == "local-test-adapter"
     assert _anonymous_workspace_auth_mode(None, None, False) == "unconfigured-fail-closed"
+
+
+def test_supabase_admin_headers_support_current_and_legacy_keys():
+    current = supabase_admin_headers("sb_secret_example")
+    assert current["apikey"] == "sb_secret_example"
+    assert "authorization" not in current
+
+    legacy = supabase_admin_headers("legacy-service-role-jwt")
+    assert legacy["apikey"] == "legacy-service-role-jwt"
+    assert legacy["authorization"] == "Bearer legacy-service-role-jwt"
 
 
 @pytest.fixture
