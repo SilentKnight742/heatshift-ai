@@ -375,3 +375,54 @@ end;
 $$;
 
 grant execute on function public.create_anonymous_workspace() to authenticated;
+
+-- New Supabase projects can disable "Automatically expose new tables". Keep
+-- access explicit so the application does not depend on permissive project-wide
+-- default grants. Anonymous visitors first sign in anonymously and therefore use
+-- the authenticated role; the unauthenticated anon role receives no table access.
+grant usage on schema public to authenticated, service_role;
+
+revoke all on public.workspaces,
+  public.sites,
+  public.site_days,
+  public.crews,
+  public.jobs,
+  public.job_dependencies,
+  public.schedule_versions,
+  public.schedule_entries,
+  public.analyses,
+  public.provisioning_jobs,
+  public.live_quota,
+  public.provider_credit_reservations,
+  public.heatshift_provider_reservations,
+  public.provider_request_cache
+from anon;
+
+grant select, insert, update, delete on public.workspaces,
+  public.sites,
+  public.site_days,
+  public.crews,
+  public.jobs,
+  public.job_dependencies,
+  public.schedule_versions,
+  public.schedule_entries,
+  public.analyses,
+  public.provisioning_jobs,
+  public.live_quota
+to authenticated;
+
+grant all on public.workspaces,
+  public.sites,
+  public.site_days,
+  public.crews,
+  public.jobs,
+  public.job_dependencies,
+  public.schedule_versions,
+  public.schedule_entries,
+  public.analyses,
+  public.provisioning_jobs,
+  public.live_quota,
+  public.provider_credit_reservations,
+  public.heatshift_provider_reservations,
+  public.provider_request_cache
+to service_role;

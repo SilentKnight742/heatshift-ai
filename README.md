@@ -88,7 +88,10 @@ Local development defaults to a header-based workspace adapter so the product ca
 
 ## Production setup
 
-Apply [the Supabase migration](supabase/migrations/202609010001_weekly_operations.sql), enable anonymous sign-ins, and configure:
+Create the Supabase project with the Data API enabled, automatic table exposure
+disabled, and automatic RLS enabled. Apply
+[the Supabase migration](supabase/migrations/202609010001_weekly_operations.sql),
+enable anonymous sign-ins, and configure:
 
 ```text
 NEXT_PUBLIC_SUPABASE_URL
