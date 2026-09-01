@@ -134,6 +134,31 @@ class FortyGuardClient:
             raise FortyGuardError("Environmental submission did not return an activity ID")
         return str(activity_id)
 
+    async def submit_satellite_segmentation(
+        self,
+        latitude: float,
+        longitude: float,
+        date_time: dict,
+        granularity: int = 100,
+    ) -> str:
+        response = await self._request(
+            "POST",
+            "/v1/satellite",
+            {
+                "sat": {"latitude": latitude, "longitude": longitude},
+                "date_time": date_time,
+                "granularity": granularity,
+            },
+        )
+        activity_id = response.get("data", {}).get("activity_id")
+        if not activity_id:
+            raise FortyGuardError("Satellite submission did not return an activity ID")
+        return str(activity_id)
+
+    async def get_credit_usage(self) -> dict:
+        """Read provider usage without submitting a billable analysis task."""
+        return await self._request("POST", "/v1/system/fetch-api-key-usage", {})
+
     async def get_activity_status(self, activity_id: str) -> dict:
         if not activity_id or "/" in activity_id:
             raise ValueError("invalid activity ID")
@@ -295,4 +320,3 @@ class FortyGuardClient:
         for longitude, latitude in ring:
             if not -180 <= longitude <= 180 or not -90 <= latitude <= 90:
                 raise ValueError("polygon contains an invalid coordinate")
-
