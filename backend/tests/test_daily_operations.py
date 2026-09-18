@@ -1,5 +1,6 @@
 from __future__ import annotations
 
+import copy
 import uuid
 from dataclasses import replace
 from datetime import date
@@ -12,7 +13,9 @@ from app.clients.fortyguard import FortyGuardError
 from app.config import settings
 from app.services import auth as auth_service
 from app.services.daily_analysis import HIGH_RISK_THRESHOLD, site_thermal_burden, validate_schedule
-from app.services.daily_store import daily_store
+from app.models.daily import DailySiteCreate, GeometryInput, SimulationRequest
+from app.services.auth import WorkspacePrincipal, current_workspace_principal
+from app.services.daily_store import DailyStore, daily_store
 from app.services.provider_status import ProviderStatusService
 
 
@@ -155,6 +158,54 @@ async def test_custom_site_flow_is_isolated_and_requires_generation(client: http
     assert result["operation_date"] == "2026-08-20"
     assert result["metrics"]["constraint_valid"] is True
     assert result["metrics"]["productive_task_time_retained_percent"] == 100
+
+
+@pytest.mark.anyio
+async def test_daily_workspace_survives_a_fresh_serverless_store(monkeypatch: pytest.MonkeyPatch):
+    class MemoryPersistence:
+        enabled = True
+        snapshot = None
+
+        async def load(self, _owner_id: str, _token: str):
+            return copy.deepcopy(self.snapshot)
+
+        async def save(self, _owner_id: str, _token: str, snapshot):
+            self.snapshot = copy.deepcopy(snapshot)
+
+    persistence = MemoryPersistence()
+    monkeypatch.setattr("app.services.daily_store.workspace_persistence", persistence)
+
+    async def fallback_labels(_site):
+        from app.services.daily_simulator import FALLBACK_ACTIVITIES
+        return FALLBACK_ACTIVITIES, "deterministic_stochastic"
+
+    monkeypatch.setattr("app.services.daily_simulator._activity_labels", fallback_labels)
+    owner_id = str(uuid.uuid4())
+    token = current_workspace_principal.set(WorkspacePrincipal(owner_id, "test-token", False))
+    try:
+        first_store = DailyStore()
+        site = await first_store.create_site(owner_id, DailySiteCreate(
+            name="Durable test yard",
+            state_code="AZ",
+            site_type="maintenance yard",
+            operation_date=date(2026, 8, 20),
+            geometry=GeometryInput(type="coordinates", longitude=-112.05, latitude=33.45, radius_m=500),
+        ))
+        await first_store.generate(owner_id, site.site_id, SimulationRequest(seed=44, crew_count=6, jobs_per_crew=3))
+        await first_store.analyze(owner_id, site.site_id)
+
+        second_store = DailyStore()
+        restored = await second_store.site(owner_id, site.site_id)
+
+        assert restored.site.workflow_stage == "analyzed"
+        assert restored.evidence is not None
+        assert restored.simulation is not None
+        assert restored.analysis is not None
+        assert len(restored.crews) == 6
+        assert len(restored.jobs) == 18
+        assert restored.analysis.metrics.constraint_valid is True
+    finally:
+        current_workspace_principal.reset(token)
 
 
 @pytest.mark.anyio

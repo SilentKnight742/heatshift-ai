@@ -3,7 +3,7 @@
 | Service | Current use | Cost posture |
 |---|---|---|
 | Vercel Hobby | Next.js frontend and FastAPI backend | Free public demonstration; no custom domain |
-| Supabase Free | Anonymous hosted identity | Free tier; service secret remains backend-only |
+| Supabase Free | Anonymous hosted identity and RLS-scoped daily workspace snapshots | Free tier; service secret remains backend-only |
 | Leaflet + OpenStreetMap | Interactive state/site map | No map API key; standard attribution retained |
 | Groq Free | Optional activity-name enrichment | Deterministic label fallback keeps generation functional |
 | FortyGuard hackathon credits | Cached built-in evidence and read-only availability check | No provider analysis is submitted by console status/retry |

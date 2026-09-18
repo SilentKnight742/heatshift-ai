@@ -34,7 +34,7 @@ HeatShift has no worker wearable, indoor sensor, future forecast, medical data, 
 - Original and deterministic HeatShift schedule layers.
 - Hourly conditions, active jobs, metric explanations, an operation/method view and a grounded briefing.
 
-Custom daily workspaces currently use process-local storage. A backend restart or serverless cold start can remove custom sites. Reset restores the three built-in sites.
+Hosted custom daily workspaces are persisted in an RLS-scoped Supabase snapshot. They survive Vercel instance changes and cold starts while remaining isolated to the anonymous identity. Local evaluation without Supabase uses process-local storage. Reset removes custom state and restores the three built-in sites.
 
 ## 4. Provider and fallback status
 
@@ -169,7 +169,7 @@ Pass only if:
 
 - Historical one-day simulator, not a forecast.
 - Custom-site weather is simulated and not automatically upgraded when FortyGuard becomes available.
-- Custom daily workspaces are not yet durable across backend restarts/cold starts.
+- Hosted custom daily workspaces depend on Supabase Free availability and quota; local no-Supabase workspaces are process-local.
 - Ambient/modelled conditions are not personal or indoor measurements.
 - Operations are fictional even when environmental evidence is real.
 - Free map, LLM and hosting tiers provide no production SLA.

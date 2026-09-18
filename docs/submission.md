@@ -37,7 +37,7 @@ HeatShift is historical screening-level planning support. It is not a forecast, 
 ## Current limitations
 
 - Custom-site weather is simulated even when the provider is reachable.
-- Custom daily workspaces use process-local storage and can be lost on restart/cold start.
+- Hosted custom daily workspaces use RLS-scoped Supabase snapshots and survive serverless instance changes; local no-Supabase workspaces remain process-local.
 - The optimizer returns a validated feasible result, not a proven global optimum.
 
 ## Links

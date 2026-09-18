@@ -81,11 +81,11 @@ Provider and LLM keys are optional for local evaluation. With no FortyGuard key,
 - Next.js 16 and React 19 frontend.
 - Leaflet/OpenStreetMap interactive map with GeoJSON heat cells; no WebGL dependency.
 - FastAPI API and deterministic daily simulation/optimization engine.
-- Supabase anonymous identity for hosted access control.
+- Supabase anonymous identity, RLS isolation and durable custom-workspace snapshots.
 - Groq-compatible optional activity naming; deterministic names and briefings remain available without an LLM.
 - Vercel Hobby frontend and backend deployments.
 
-Custom daily workspaces currently use process-local storage. They are suitable for the local/product demonstration but are not durable across a backend restart or serverless cold start. The three curated examples are reconstructed from checked-in evidence on every start.
+Hosted custom daily workspaces are stored as RLS-scoped Supabase snapshots, so site creation, generated operations and completed analyses survive Vercel instance changes and cold starts. Local development without Supabase remains process-local. The three curated examples are reconstructed from checked-in evidence on every start.
 
 ## Active daily API
 

@@ -89,7 +89,8 @@ The custom site disappears and Phoenix, Houston and Miami return.
 
 ## Safety checks
 
-- A different workspace must not see another process-local custom site.
+- A different workspace must not see another custom site; hosted state is isolated by Supabase RLS.
+- Repeating the GET/generate/analyze sequence through fresh backend instances must retain the same custom site and workflow stage.
 - Provider retry must stay read-only.
 - Client input cannot supply an official task score or proposed schedule.
 - Simulated evidence must never be returned with source `FortyGuard`.

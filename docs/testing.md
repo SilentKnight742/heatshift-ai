@@ -4,7 +4,7 @@
 
 | Layer | Current result | Scope |
 |---|---:|---|
-| Backend | 83 passed | Daily API, legacy compatibility, geometry, simulation, optimizer, metrics, provider status, authentication boundaries, FortyGuard contracts and independent claims |
+| Backend | 84 passed | Daily API, cross-instance persistence, legacy compatibility, geometry, simulation, optimizer, metrics, provider status, authentication boundaries, FortyGuard contracts and independent claims |
 | Frontend unit/component | 18 passed | API/session renewal, map calculations, Markdown safety, console interactions and provider fallback/retry transition |
 | TypeScript | Passed | Complete frontend type check |
 | Production build | Passed | Next.js homepage and console |
@@ -17,6 +17,7 @@ No expected failure remains. AI prose cannot change official metrics or schedule
 - All 50 states plus DC, coordinate/circle/polygon normalization, state containment and 10 mi² cap.
 - Three curated sites reconstructed from checked-in evidence.
 - Isolated custom site creation, deletion and reset.
+- RLS-scoped snapshot round-trip through a fresh store instance, mirroring a Vercel cold start.
 - Historical date validation and timezone assignment.
 - Reproducible location/date-aware simulated evidence.
 - Seeded crew/job generation, bounds and repeatability.
@@ -83,4 +84,4 @@ CI uses recorded provider contracts and mocked provider transitions. It never su
 5. Run the same seed twice and confirm the generated operation and official result repeat.
 6. Force WebGL off and confirm map/cell interaction remains intact.
 7. Try outside-state and oversized sites and confirm server-side rejection.
-8. Restart the backend and confirm the documented limitation: custom process-local sites disappear and curated defaults return.
+8. In hosted mode, complete create → generate → analyze across fresh backend instances and confirm the custom site survives. In local no-Supabase mode, confirm the documented process-local behavior.

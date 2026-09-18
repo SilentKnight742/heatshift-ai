@@ -32,6 +32,7 @@ from .daily_analysis import (
     site_thermal_burden,
 )
 from .daily_simulator import daily_simulator, simulated_evidence
+from .auth import current_workspace_principal
 from .state_catalog import (
     circle_feature_collection,
     normalize_geometry,
@@ -39,6 +40,7 @@ from .state_catalog import (
     state_options,
     validate_in_state,
 )
+from .workspace_persistence import workspace_persistence
 
 
 CURATED_DAILY_SITES = [
@@ -124,19 +126,77 @@ def _timezone_for(state_code: str, longitude: float, latitude: float) -> str:
 class DailyStore:
     def __init__(self) -> None:
         self._workspaces: dict[str, dict[str, DailyRecord]] = {}
+        self._hydrated: set[str] = set()
         self._lock = asyncio.Lock()
 
     async def workspace(self, owner_id: str) -> dict[str, DailyRecord]:
         async with self._lock:
             if owner_id not in self._workspaces:
                 self._workspaces[owner_id] = await self._default_records()
+            principal = current_workspace_principal.get()
+            if (
+                owner_id not in self._hydrated
+                and principal
+                and principal.user_id == owner_id
+                and principal.access_token
+                and workspace_persistence.enabled
+            ):
+                snapshot = await workspace_persistence.load(owner_id, principal.access_token)
+                if snapshot:
+                    self._restore_snapshot(self._workspaces[owner_id], snapshot)
+                self._hydrated.add(owner_id)
             return self._workspaces[owner_id]
+
+    async def save(self, owner_id: str) -> None:
+        principal = current_workspace_principal.get()
+        if not principal or principal.user_id != owner_id or not principal.access_token:
+            return
+        workspace = self._workspaces.get(owner_id)
+        if workspace:
+            await workspace_persistence.save(owner_id, principal.access_token, self._snapshot(workspace))
+
+    @staticmethod
+    def _snapshot(workspace: dict[str, DailyRecord]) -> dict[str, Any]:
+        return {
+            "version": 2,
+            "product": "daily",
+            "custom_sites": {
+                site_id: {
+                    "site": record.site.model_dump(mode="json"),
+                    "evidence": record.evidence.model_dump(mode="json") if record.evidence else None,
+                    "crews": [crew.model_dump(mode="json") for crew in record.crews],
+                    "jobs": [job.model_dump(mode="json") for job in record.jobs],
+                    "simulation": record.simulation.model_dump(mode="json") if record.simulation else None,
+                    "analysis": record.analysis.model_dump(mode="json") if record.analysis else None,
+                }
+                for site_id, record in workspace.items()
+                if not record.site.curated
+            },
+        }
+
+    @staticmethod
+    def _restore_snapshot(workspace: dict[str, DailyRecord], snapshot: dict[str, Any]) -> None:
+        from ..models.daily import DailyCrew, DailyJob
+
+        if snapshot.get("version") != 2 or snapshot.get("product") != "daily":
+            return
+        for site_id, value in snapshot.get("custom_sites", {}).items():
+            workspace[site_id] = DailyRecord(
+                site=DailySite.model_validate(value["site"]),
+                evidence=DailyEvidence.model_validate(value["evidence"]) if value.get("evidence") else None,
+                crews=[DailyCrew.model_validate(item) for item in value.get("crews", [])],
+                jobs=[DailyJob.model_validate(item) for item in value.get("jobs", [])],
+                simulation=SimulationSummary.model_validate(value["simulation"]) if value.get("simulation") else None,
+                analysis=DailyAnalysis.model_validate(value["analysis"]) if value.get("analysis") else None,
+            )
 
     async def reset(self, owner_id: str) -> list[DailySite]:
         """Replace one anonymous daily workspace with pristine curated defaults."""
+        await self.workspace(owner_id)
         defaults = await self._default_records()
         async with self._lock:
             self._workspaces[owner_id] = defaults
+        await self.save(owner_id)
         return sorted(
             (record.site.model_copy(deep=True) for record in defaults.values()),
             key=lambda item: item.name,
@@ -222,6 +282,7 @@ class DailyStore:
         )
         workspace = await self.workspace(owner_id)
         workspace[site.site_id] = DailyRecord(site=site)
+        await self.save(owner_id)
         return site
 
     async def generate(
@@ -237,6 +298,7 @@ class DailyStore:
         record.crews, record.jobs, record.simulation = await daily_simulator.generate(record.site, request)
         record.analysis = None
         record.site.workflow_stage = WorkflowStage.SIMULATION_READY
+        await self.save(owner_id)
         return await self.site(owner_id, site_id)
 
     async def analyze(self, owner_id: str, site_id: str) -> DailyAnalysis:
@@ -245,6 +307,7 @@ class DailyStore:
             raise ValueError("generate the daily simulation before running analysis")
         record.analysis = self._analyze(record)
         record.site.workflow_stage = WorkflowStage.ANALYZED
+        await self.save(owner_id)
         return record.analysis
 
     async def delete(self, owner_id: str, site_id: str) -> None:
@@ -253,6 +316,7 @@ class DailyStore:
         if record.site.curated:
             raise ValueError("the three built-in examples cannot be deleted")
         del workspace[site_id]
+        await self.save(owner_id)
 
     @staticmethod
     def _analyze(record: DailyRecord) -> DailyAnalysis:
