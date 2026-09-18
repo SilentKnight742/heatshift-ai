@@ -1,6 +1,6 @@
 # Evaluation
 
-> **Compatibility benchmark:** this document preserves the earlier single-day Phoenix replay because its published claim remains reproducible. It is one example, not the identity or full scope of the current multi-site weekly product. Weekly methodology and testing are documented in [methodology.md](methodology.md) and [testing.md](testing.md).
+> **Compatibility benchmark:** this document preserves the earlier narrow Phoenix replay because its published claim remains reproducible. It is one example, not the identity of the current map-first daily simulator. Current methodology and testing are documented in [methodology.md](methodology.md) and [testing.md](testing.md).
 
 HeatShift was replayed against three completed, non-empty FortyGuard historical responses for the same Phoenix polygon. The fictional crews, six tasks, constraints, deterministic policy v1.0.0, and screening threshold (score ≥ 50) were held constant. The evaluation runs entirely from the saved real responses and requires no network access.
 

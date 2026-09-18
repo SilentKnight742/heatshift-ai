@@ -1,34 +1,34 @@
 # Zero-cost stack and controls
 
-| Service | Use | Cost posture |
+| Service | Current use | Cost posture |
 |---|---|---|
-| Vercel Hobby | Next.js frontend and FastAPI serverless backend | Free hackathon deployment; no custom domain required |
-| Supabase Free | Anonymous auth, Postgres, RLS and workspace persistence | Free project; documented limits fail closed rather than automatic database overage |
-| Cloudflare Turnstile Free | Bot protection for live provisioning only | No Cloudflare proxy or paid plan required |
-| OpenFreeMap | MapLibre vector style/tiles | No account/key; no SLA, so SVG/GeoJSON fallback is mandatory |
-| Groq Free | Optional grounded explanation | Deterministic fallback preserves product function at rate limit/outage |
-| FortyGuard hackathon credits | Historical environmental acquisition | Guarded by one-site quota, reservation, cache, idempotency and 200,000-credit reserve |
+| Vercel Hobby | Next.js frontend and FastAPI backend | Free public demonstration; no custom domain |
+| Supabase Free | Anonymous hosted identity | Free tier; service secret remains backend-only |
+| Leaflet + OpenStreetMap | Interactive state/site map | No map API key; standard attribution retained |
+| Groq Free | Optional activity-name enrichment | Deterministic label fallback keeps generation functional |
+| FortyGuard hackathon credits | Cached built-in evidence and read-only availability check | No provider analysis is submitted by console status/retry |
+| Local simulation | Custom-site weather and operations | Deterministic, free and explicitly labelled |
 
 ## No-surprise safeguards
 
-- No Render service, paid database, custom domain, paid map key or automatic provider overage.
-- Provider usage must be readable before work is submitted.
-- Estimated cost is reserved atomically; requests that breach the global reserve fail closed.
-- One live site-week per anonymous identity.
-- Turnstile is checked server-side for token, action and allowed hostname.
-- Geometry is capped at 10 mi² and granularity fixed at 100m.
-- Identical requests share a request-hash cache and idempotency key.
-- Completed paid stages are checkpointed and never repeated during retry.
-- Curated caches and deterministic fallback keep the evaluation usable during outages.
-
-The observed 64,240-credit estimate (`7×4,220 + 7×2,900 + 14,400`) is not a provider billing contract. Runtime code queries actual usage and fails closed.
+- No Render service, paid database, paid map key, custom domain or automatic provider overage.
+- Provider status uses a read-only usage request and is cached for five minutes.
+- Retry bypasses only that cache; it still does not submit a provider job.
+- Unavailable, unconfigured or exhausted provider states keep the console in Simulated run.
+- TLS verification is never disabled.
+- Geometry is constrained to the selected state and 10 mi².
+- Curated evidence stays checked into the repository, so the three demonstrations survive provider outages.
+- Deterministic briefing and activity names remain available without a hosted LLM.
+- CI never contacts FortyGuard.
 
 ## Account setup
 
-1. Create a free Supabase project, enable anonymous sign-ins and apply the migration.
-2. Create one free Turnstile widget allowing localhost, Vercel previews and production.
-3. Add the public frontend keys to the frontend project and all secrets only to the backend project.
-4. Keep `HEATSHIFT_LOCAL_AUTH=false` in Vercel.
-5. Retain the existing FortyGuard and Groq keys server-side.
+1. Create a free Supabase project and enable anonymous sign-ins.
+2. Keep the existing FortyGuard and Groq keys server-side.
+3. Add public Supabase variables only to the frontend Vercel project.
+4. Add Supabase secrets, FortyGuard and Groq keys only to the backend project.
+5. Keep `HEATSHIFT_LOCAL_AUTH=false` in Vercel.
 
-Vercel Hobby’s terms and resource ceilings still apply; this is a public hackathon proof of concept, not a commercial hosting commitment or SLA.
+Cloudflare Turnstile and the former live site-week provisioning flow remain in legacy backend modules but are not part of the current daily console path.
+
+Vercel Hobby, Supabase Free, OpenStreetMap and free model/provider tiers provide no commercial production SLA. This is a public proof of concept.

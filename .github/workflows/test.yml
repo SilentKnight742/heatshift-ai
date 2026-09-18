@@ -16,6 +16,12 @@ jobs:
       - run: python -c "from main import app; assert app.title == 'HeatShift AI'"
       - run: python -m pytest backend/tests -q
       - run: python scripts/run_claim_evaluation.py
+      - run: bash -n scripts/start-local.sh
+      - shell: pwsh
+        run: |
+          $errors = $null
+          [System.Management.Automation.Language.Parser]::ParseFile("scripts/start-local.ps1", [ref]$null, [ref]$errors) > $null
+          if ($errors.Count) { $errors | ForEach-Object { Write-Error $_ }; exit 1 }
 
   frontend:
     runs-on: ubuntu-latest

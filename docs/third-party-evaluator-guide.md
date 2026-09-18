@@ -1,131 +1,146 @@
 # HeatShift AI — third-party evaluator handbook
 
-This handbook assumes no knowledge of HeatShift, FortyGuard, industrial heat planning, or the codebase.
+This handbook assumes no prior knowledge of HeatShift, FortyGuard, heat science or operations planning.
 
-## 1. What problem does it solve?
+## 1. What HeatShift does
 
-Outdoor operations managers already have jobs, crews, access windows, dependencies and deadlines. Heat can make the original plan undesirable, but “move everything to the morning” is usually impossible: some work is fixed, crews cannot overlap, specialists are only eligible for certain jobs, and moving work has a logistical cost.
+A heatmap can show that an outdoor site is hot. It does not tell a manager which job can move, when its crew is free, which work is fixed or whether a safer-looking schedule is operationally possible.
 
-HeatShift combines historical heat evidence with those operational facts. It calculates a screening score for each job-hour, searches for a constraint-valid weekly alternative, shows the exposure/logistics trade-off, and leaves the final Working plan under manager control.
+HeatShift connects those decisions. For one operation day it combines hourly environmental conditions with fictional jobs, crews and constraints; calculates a screening score for every task-hour; searches valid schedule alternatives; and shows both the exposure change and the logistical cost of the proposal.
 
-The intended users are operations managers, dispatchers, HSE/safety leads, field supervisors and planners for logistics, ports, utilities, road maintenance, construction and infrastructure work. The product is not aimed at diagnosing workers or replacing professional safety programs.
+The intended users are operations managers, dispatchers, HSE/EHS leads, site supervisors and planners in logistics, ports, utilities, road maintenance, construction and infrastructure work.
 
-## 2. Data you are looking at
-
-Every important screen should distinguish:
+## 2. What is real and what is simulated
 
 | Label | Meaning |
 |---|---|
-| Real FortyGuard evidence | Provider heatmaps, environmental series, satellite context and activity IDs for that exact site/week |
-| Fictional operation | Demonstration site name, workers, crews, jobs, logistics, dependencies and statuses |
-| HeatShift-derived | Hourly cells, building context, scores, metrics and schedules calculated from the two layers above |
-| Labeled demonstration profile | Development-only outage path; never provider evidence and not used by the five checked-in curated site-weeks |
+| Cached FortyGuard evidence | Real provider-shaped environmental evidence previously acquired for the exact built-in site/day, with activity IDs and repository integrity hashes |
+| Fictional operation | Demonstration crews, worker counts, PPE, acclimatization, jobs, workloads, locations, mobility and time windows |
+| Simulated local conditions | A transparent location/date-aware fallback used for newly created sites; not historical provider evidence |
+| HeatShift-derived | Scores, thermal burden, crew load, schedule proposal and comparisons calculated by HeatShift |
 
-A building value is not a sensor reading. It is an estimate from nearby/intersecting provider cells and the disclosed hourly interpolation. HeatShift has no live worker wearable, indoor sensor, medical data, future forecast, injury prediction or automatic job completion.
+The three built-in analyzed sites are DesertLine Logistics Yard in Phoenix, GulfGate Container Terminal in Houston and SunGrid Utility Response Zone in Miami. Their operational data is fictional even though their environmental evidence is cached provider data.
+
+HeatShift has no worker wearable, indoor sensor, future forecast, medical data, injury prediction or automatic job completion.
 
 ## 3. Product scope
 
-- All 50 documented US states plus Washington, DC.
-- One global historical seven-day week, starting January 1, 2019 or later and ending no later than the last completed day.
-- Default curated week: July 15–21, 2024.
-- Five fictional operations backed by exact cached provider site-weeks: Phoenix, Houston, Miami, Las Vegas and New York City.
-- One protected live site-week per anonymous workspace.
-- State portfolio map and detailed site map with automatic SVG fallback.
-- Site, crew and job CRUD; map placement; schedule editing; statuses; metrics; deterministic explanations and grounded AI Q&A.
+- All 50 US states plus Washington, DC.
+- One historical operation date from January 1, 2019 through today.
+- One interactive state/site map with pan, zoom, site selection and clickable 100 m heat cells.
+- Three pre-analyzed demonstrations.
+- Custom site creation by map point or coordinates/radius, constrained to the selected state and 10 mi².
+- Seeded generation of 4–12 crews and 3–6 jobs per crew.
+- Original and deterministic HeatShift schedule layers.
+- Hourly conditions, active jobs, metric explanations, an operation/method view and a grounded briefing.
 
-If a selected site lacks evidence for a changed week, it must say so. Reusing another week or Phoenix evidence would be a failure.
+Custom daily workspaces currently use process-local storage. A backend restart or serverless cold start can remove custom sites. Reset restores the three built-in sites.
 
-## 4. The decision model in plain language
+## 4. Provider and fallback status
 
-For every 30-minute job segment, HeatShift combines apparent heat with workload, PPE burden, acclimatization, and shade/sun. The score is a transparent 0–100 product screening score. Score 50 is a configurable comparison threshold, not a medical limit.
+The console header always reports provider state:
 
-Three primary dimensions answer different questions:
+- **Checking FortyGuard:** the initial read-only availability check is running.
+- **FortyGuard live:** the provider answered successfully.
+- **Simulated run:** the provider is unavailable, unconfigured or out of credits. The header states the reason and exposes **Retry**.
 
-1. **Site Thermal Burden:** how much apparent heat above 35°C accumulated across the week.
-2. **Crew Exposure Load:** how much risk-weighted worker-time each crew carries.
-3. **Operational Disruption:** how many minutes/jobs/crews/days the plan changes, reported as separate components.
+Retry forces a new read-only check. A failed retry remains in simulated mode. Only a successful response changes the header to FortyGuard live. The check never submits a heatmap or spends provider credits, and HeatShift never disables TLS verification.
 
-Original is immutable. HeatShift is the deterministic proposal. Working is the manager’s editable plan. The optimizer first satisfies hard constraints, then minimizes score-50 worker-minutes, total crew load, the highest individual crew load, and finally disruption. It returns a validated feasible plan, not a mathematically proven global optimum.
+Newly created sites currently use simulated local conditions in either provider state. “FortyGuard live” confirms reachability; it does not claim that a new site was provisioned from FortyGuard.
 
-## 5. First-run judge walkthrough
+## 5. How the fallback simulation works
+
+For a custom site, the selected date, season, latitude, broad regional temperature/humidity class, longitude and seed produce:
+
+- 24 hourly values for air temperature, apparent temperature, wet bulb, humidity and solar irradiance;
+- a 7×9 field of 100 m heat cells;
+- simulated vegetation, pavement and building percentages;
+- seeded fictional crews and jobs.
+
+The simulation is reproducible for the same inputs. It is useful for demonstrating HeatShift’s planning loop but must not be described as measured weather for that location.
+
+## 6. Decision model
+
+Each job is evaluated in 30-minute segments. Its task-hour score combines apparent heat at its nearest cell, workload, PPE, acclimatization and shade/sun. Score 50 is a disclosed comparison threshold, not a medical limit.
+
+Primary metrics:
+
+1. **Site Thermal Burden:** apparent-temperature degree-hours above the configurable 35°C baseline.
+2. **Crew Exposure Load:** risk-weighted worker-hours accumulated by crews.
+3. **Operational Disruption:** shifted minutes and crew changes, shown separately.
+
+Downstream results include original/proposed high-risk worker-minutes, worker-hours avoided, percentage reduction, moved tasks, fixed tasks preserved, residual alerts, work retained and hard violations.
+
+The optimizer first minimizes high-risk worker-minutes, then total crew load, highest individual crew load and disruption. Fixed jobs, durations, crew non-overlap, eligibility and time windows are hard constraints. The result is a validated feasible improvement, not a guaranteed global optimum.
+
+## 7. Recommended evaluation walkthrough
 
 ### Homepage
 
-1. Confirm the hero describes a general weekly scheduling product, not one Phoenix replay.
-2. Confirm the flow reads `Site conditions → jobs and crews → task-hour risk → schedule alternatives → manager decision`.
-3. Confirm Site Thermal Burden, Crew Exposure Load and Operational Disruption are explained.
-4. Find the HEAT-SHIELD panel: 566 sessions, 0.7718 rank correlation and 36.45 percentage-point group difference.
-5. Confirm nearby text says association, not injury prevention or universal safety validity.
-6. Confirm real/fictional/derived layers are explained and Phoenix appears only as an example.
+1. Confirm the hero says “The heat-aware operating plan.”
+2. Confirm the product flow explains site conditions → jobs/crews → task-hour risk → alternatives → decision.
+3. Find Site Thermal Burden, Crew Exposure Load and Operational Disruption.
+4. Inspect the metric formulas and constraint summary.
+5. Find the HEAT-SHIELD result: 566 sessions, 0.7718 rank correlation and 36.45 percentage-point group difference.
+6. Confirm it is described as association, not injury prevention or medical validation.
 
-### Console orientation
+### Built-in analyzed site
 
-1. Open `/console` and follow the five-step walkthrough.
-2. Confirm toolbar controls for state, week, source/quota and Walkthrough.
-3. Switch AZ → TX → FL → NV → NY and confirm each portfolio changes without changing the global week.
-4. Switch Portfolio/Site, pan/zoom, select a site, select seven days and scrub all 24 hours.
-5. Confirm the chart, thermal field, job status board and timeline respond to the selected day/hour.
-6. Confirm clock movement never automatically marks a job completed.
+1. Open `/console` and note the provider status in the header.
+2. Choose Arizona and DesertLine Logistics Yard.
+3. Pan and zoom the map; change the hour and confirm cell shades and exact temperatures change while the state scale stays fixed.
+4. Click a populated cell and inspect its temperature and jobs.
+5. Switch Original and HeatShift; confirm active-work outlines respond to the hour.
+6. Open each result card. Clicking the open card again must close it.
+7. Expand/collapse and move the HeatShift Agent and HeatShift Analytics panels independently.
+8. Open Operation & method and inspect crews, jobs, weather, score anatomy, metrics, optimizer constraints and before/after changes.
 
-### Map resilience
+### Custom operation
 
-1. Inspect a site/building/cell/job/crew. Building text must say estimate/not sensor.
-2. Drag a pending job location between hotter/cooler cells; a recomputed analysis may change that task’s score. An outside drop must be rejected.
-3. Drag an eligible crew card onto a job.
-4. Click “Use SVG fallback.” The state/site outline, thermal cells, sites/jobs and selection must remain visible.
-5. A browser without WebGL should enter this fallback automatically.
+1. Select any state and click Create site, or double-click the map.
+2. Enter a site name, type, coordinates, radius and historical date.
+3. Confirm an outside-state or greater-than-10-mi² geometry is rejected.
+4. Confirm the new tab says Analysis not ready and the source says simulated local weather.
+5. Choose seed, crew count and jobs per crew; click Generate simulation.
+6. Inspect the generated crews/jobs in Operation & method.
+7. Click Run HeatShift analysis.
+8. Confirm a briefing, both schedules, metrics, explanations, zero hard violations and a clickable heat field appear.
+9. Reset defaults and confirm the custom site disappears.
 
-### Create and manage an operation
+### Provider fallback
 
-1. Choose a state and Create site.
-2. Draw at least three polygon vertices, or position a circle and set its radius, or enter coordinates.
-3. Confirm timezone and create. Geometry outside the state/US or above 10 mi² must fail.
-4. Use Sites to edit name/type/timezone and delete a private site.
-5. Use Crews to edit name, workers, PPE, acclimatization and workload.
-6. Use Jobs to edit name, duration, workload, assigned/eligible crews, dependencies, mobility, shade and lifecycle status.
-7. Completed work must lock; a dependency cycle or deletion of an in-use crew/prerequisite must fail clearly.
+1. With provider access unavailable, confirm the header says Simulated run and gives the reason.
+2. Confirm no blocking modal covers the map.
+3. Confirm built-in sites and custom simulation/analysis remain usable.
+4. Click Retry. If the provider is still unavailable, the header must remain Simulated run.
+5. In a mocked/available environment, confirm a successful retry changes the header to FortyGuard live and removes Retry.
 
-### Schedule decision
+### Accessibility and resilience
 
-1. Select Original and record a job time/crew.
-2. Select HeatShift and inspect proposed changes.
-3. Select Working, apply one proposal, drag a job, reassign an eligible crew, undo and reset.
-4. Attempt fixed/completed movement, crew overlap, ineligible reassignment or dependency inversion. The exact constraint should appear; the last valid Working plan should remain.
-5. Defer an eligible job to the next day and cancel one. Cancelled work must lower retained work and exposure; HeatShift itself must never cancel a job.
-6. Confirm metric comparisons preserve Original → HeatShift → Working.
+1. Check desktop and mobile layouts.
+2. Use Tab and Enter/Space on primary actions, tabs, cells and panels.
+3. Confirm visible body/form text is at least 14 px, supporting text 12 px and primary targets 44 px.
+4. Disable WebGL: the Leaflet/GeoJSON map and heat cells must still work.
+5. Confirm Markdown renders as headings/lists/emphasis and raw HTML does not execute.
 
-### Explainability and AI
+## 8. Independent verification
 
-1. Open every metric. Definition, formula, inputs, source, plan comparison and limits must appear before AI.
-2. Ask a contextual question about the selected metric/job/crew.
-3. Confirm Markdown headings/lists/emphasis render without raw asterisks.
-4. Raw HTML/script and unsafe links must never execute.
-5. Official metrics/schedules must not change after Q&A. Model answers are limited; deterministic explanations remain unlimited.
-
-### Persistence/isolation
-
-1. With Supabase configured, refresh and confirm private CRUD/workthrough state persists.
-2. Open a clean second profile. It must not see the first profile’s private records.
-3. Curated environmental data may be shared; private operational edits may not.
-
-## 6. Live provisioning test (optional and credit-consuming)
-
-Use only with owner approval and sufficient provider credits.
-
-1. Create one private site and choose a valid historical week.
-2. Complete Turnstile and submit once.
-3. Refresh/retry with the same idempotency key. Completed activity IDs must remain identical. An identical geometry/week request may reuse a complete request-hash cache, but still consumes that anonymous workspace's one-site allowance.
-4. Observe seven map stages, seven environmental stages and one satellite stage.
-5. Confirm partial progress survives refresh and only missing/failed stages retry.
-6. After success, the identity’s remaining live allowance becomes zero.
-7. A second site, invalid/replayed Turnstile, unavailable usage, or reserve breach must fail before a new activity ID.
-
-Observed estimate: 64,240 credits/site-week. This is an estimate, not a billing contract.
-
-## 7. Independent verification
+One-command launch:
 
 ```bash
-PYTHONPATH=backend:. pytest backend/tests -q
+./scripts/start-local.sh
+```
+
+Windows:
+
+```powershell
+powershell -ExecutionPolicy Bypass -File .\scripts\start-local.ps1
+```
+
+Full checks:
+
+```bash
+python3 -m pytest -q
 python3 scripts/run_claim_evaluation.py
 cd frontend
 npm run lint
@@ -134,31 +149,29 @@ npm run test:e2e
 npm run build
 ```
 
-Expected deterministic baseline: 106 backend passes and zero expected failures; 15 focused frontend unit/component passes; clean type check and production build. Browser E2E is configured for Chromium, Firefox, WebKit and mobile Chromium.
+Provider verification is a separate optional read-only tier. Checked-in JSON plus an activity ID proves repository traceability, not provider origin by itself.
 
-The provider-verification tier is separate. A checked-in response plus an activity ID cannot prove its own origin; use authorized read-only status verification if independent provider authentication is required. All curated hashes and 75 completed activity IDs are pinned in `claim_evaluation/evidence_manifest.json`; with the six legacy replay IDs, the optional command verifies 81 completed activities. Two additional IDs are explicitly recorded as abandoned after remaining indefinitely in `Processing` and are not used as evidence inputs.
-
-## 8. Pass/fail summary
+## 9. Pass/fail checklist
 
 Pass only if:
 
-- location and week provenance are exact and visibly classified;
-- all schedule layers remain separate;
-- invalid edits cannot bypass constraints;
-- formulas and thresholds reproduce;
-- private data stays isolated;
-- provider quota/reserve/idempotency fail closed;
-- MapLibre and SVG paths both work;
-- AI Markdown is safe and numeric claims are grounded;
-- no future forecast, sensor, medical, injury-prevention, universal-threshold or global-optimum claim appears.
+- cached, fictional, simulated and derived data remain visibly distinct;
+- the header accurately transitions between simulated fallback and provider live states;
+- provider failure never blocks the map or triggers insecure TLS behavior;
+- custom site → simulation → analysis works;
+- exact metric formulas and threshold limitations are accessible;
+- Original and HeatShift schedules remain distinct;
+- the proposed schedule has zero encoded hard-constraint violations;
+- the map, heat cells, hourly slider and contextual panels work on desktop and mobile;
+- no forecast, sensor, medical, injury-prevention, universal-threshold or global-optimum claim appears.
 
-## 9. Known limitations
+## 10. Known limitations
 
-- Historical planning simulator, not a forecast.
-- Ambient/modelled evidence, not on-worker or indoor measurement.
-- Buildings are derived context, not sensor readings.
+- Historical one-day simulator, not a forecast.
+- Custom-site weather is simulated and not automatically upgraded when FortyGuard becomes available.
+- Custom daily workspaces are not yet durable across backend restarts/cold starts.
+- Ambient/modelled conditions are not personal or indoor measurements.
 - Operations are fictional even when environmental evidence is real.
-- Free map/LLM/hosting tiers have no production SLA.
-- One anonymous live site-week is a demo protection limit.
-- The risk policy needs further independent validation before operational safety use.
+- Free map, LLM and hosting tiers provide no production SLA.
+- The risk policy needs additional independent validation before operational safety use.
 - HeatShift complements, never replaces, on-site WBGT, emergency procedures and qualified safety professionals.

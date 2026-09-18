@@ -4,50 +4,58 @@
 
 | Layer | Current result | Scope |
 |---|---:|---|
-| Backend | 106 passed, 0 expected failures | Auth, ownership, CRUD, geometry, quota, provisioning, provider normalization/cache, metrics, optimizer, AI grounding/provider configuration, compatibility APIs and claim evaluation |
-| Frontend unit/component | 15 passed | API client and anonymous-session concurrency, briefing presentation, weekly Markdown safety, state-map drawing and forced SVG fallback |
-| TypeScript | Passed | Full frontend type check |
-| Production build | Passed | Next.js static homepage and console |
-| Browser journeys | 12 runnable-host passes; WebKit delegated to CI | Chromium, mobile Chromium and Firefox passed locally; CI installs WebKit system dependencies on Ubuntu and runs the full matrix |
+| Backend | 83 passed | Daily API, legacy compatibility, geometry, simulation, optimizer, metrics, provider status, authentication boundaries, FortyGuard contracts and independent claims |
+| Frontend unit/component | 16 passed | API/session handling, map calculations, Markdown safety, console interactions and provider fallback/retry transition |
+| TypeScript | Passed | Complete frontend type check |
+| Production build | Passed | Next.js homepage and console |
+| Browser journeys | 8 product journeys in their intended desktop/mobile projects | Homepage, interactive map, operation story, provider retry, custom operation, no-WebGL path, typography and mobile layout |
 
-The former expected-failure adversarial test has been removed. LLM prose is now checked for unsupported numbers and contradictions; invalid prose is discarded in favor of deterministic briefing text.
+No expected failure remains. AI prose cannot change official metrics or schedules.
 
 ## Backend coverage
 
-- Supabase JWT verification, local-adapter production fail-closed behavior and two-owner isolation.
-- RLS schema/policy expectations and bearer-token forwarding.
-- All 50 states plus DC, polygon/circle/coordinate geometry, exact boundary containment, 10 mi² cap and timezone validation.
-- Site, crew and job CRUD; dependency cycles; crew eligibility; completed locks; cancellation dependencies; deferred/cancelled/completed lifecycle.
-- One live site-week quota, global reserve, atomic claim/release behavior and concurrent reservation safety.
-- Turnstile success, action/hostname mismatch, expiry/replay and fail-before-provider behavior.
-- Provisioning idempotency, request-hash reuse, checkpoint/resume, partial completion, empty cells, provider error and evidence-week mismatch.
-- Seven maps, seven 24-hour environmental days, satellite normalization and hourly cell reconstruction.
-- Site Thermal Burden, Crew Exposure Load, transparent disruption and score-50 outcomes.
-- Multi-day fixed work, cross-day windows, overlap, dependencies, eligible crews, cancellations and deterministic runtime bounds.
-- Rejection of browser-submitted end times, scores, sources and other calculated values.
-- Numeric grounding rejection, deterministic fallback and Q&A ownership/rate limit.
-- Five distinct portfolio operations and compatibility API behavior.
+- All 50 states plus DC, coordinate/circle/polygon normalization, state containment and 10 mi² cap.
+- Three curated sites reconstructed from checked-in evidence.
+- Isolated custom site creation, deletion and reset.
+- Historical date validation and timezone assignment.
+- Reproducible location/date-aware simulated evidence.
+- Seeded crew/job generation, bounds and repeatability.
+- Task-hour scoring, spatial cell offset and hourly segmentation.
+- Site Thermal Burden, Crew Exposure Load and separate disruption calculations.
+- Single-day optimizer constraints, deterministic repetition and schedule validation.
+- Provider states: live, unavailable, unconfigured and exhausted credits.
+- Read-only provider status caching and forced retry.
+- Local workspace adapter when cloud credentials coexist, plus hosted fail-closed behavior.
+- FortyGuard normalization/contracts and compatibility endpoints.
+- Independent HEAT-SHIELD calculations and evidence integrity.
 
-## Frontend/browser coverage
+## Frontend and browser coverage
 
-- Homepage product story, HEAT-SHIELD source and non-causal limits.
-- State/site/week/day/hour navigation and seven-day visibility.
-- Map-drawn polygon/circle, coordinate creation and live-provisioning states.
-- Site, crew and job CRUD in the left panel and job placement/crew assignment through the map.
-- Original/HeatShift/Working separation; one/all proposal apply; drag, invalid-drop message, undo and reset.
-- Status changes and deferral.
-- Metric formula drawer and contextual Q&A.
-- GFM Markdown formatting with raw HTML disabled and unsafe links removed.
-- MapLibre rendering and forced WebGL fallback.
-- Walkthrough completion, dismissal and restart.
-- Desktop/mobile overflow, keyboard semantics, support text ≥12px, body/form text ≥14px, AI text ≥15px and primary controls ≥44px.
+- Homepage hierarchy, metric formulas, empirical result and non-causal limitations.
+- State/site navigation, pan/zoom, automatic site focus and clickable heat cells.
+- Fixed per-state temperature scale plus within-hour cell shading.
+- Hour slider, Original/HeatShift switch and active-work indication.
+- Independent draggable/minimizable Agent and Analytics panels.
+- True metric-card toggle behavior and deterministic explanations.
+- Markdown headings, lists and emphasis with raw HTML disabled.
+- Guide, reset and full-screen site/method flows.
+- Custom site → generated operation → completed analysis → reset.
+- Header-only provider fallback, failed-retry persistence and successful live transition.
+- No blocking provider modal.
+- Leaflet/GeoJSON operation without WebGL.
+- Desktop/mobile overflow, keyboard semantics, ≥14 px body/form text, ≥12 px supporting text and ≥44 px primary controls.
+
+## Launcher checks
+
+- `bash -n scripts/start-local.sh` validates the Unix launcher, and a clean launcher run is smoke-tested against both `/health` and `/console`.
+- PowerShell’s parser validates `scripts/start-local.ps1` without running it.
+- Both launchers keep Python packages in `.venv`, frontend packages in `frontend/node_modules`, load the repository `.env`, and stop both child services together.
 
 ## Commands
 
 ```bash
-PYTHONPATH=backend:. pytest backend/tests -q
+python3 -m pytest -q
 python3 scripts/run_claim_evaluation.py
-python3 scripts/run_claim_evaluation.py --remote --repeat 3
 cd frontend
 npm run lint
 npm run test:unit
@@ -55,15 +63,23 @@ npm run test:e2e
 npm run build
 ```
 
-CI uses recorded provider contracts and mocked asynchronous transitions. It never submits a live FortyGuard job. Live cache acquisition is a separate explicit admin command.
+Focused provider checks:
+
+```bash
+python3 -m pytest -q backend/tests/test_daily_operations.py
+cd frontend
+npx playwright test e2e/product.spec.ts --project=chromium --grep "provider outage"
+```
+
+CI uses recorded provider contracts and mocked provider transitions. It never submits a live FortyGuard job.
 
 ## Manual high-risk checks
 
-1. Use two clean browser profiles and confirm private sites never cross workspaces.
-2. Submit two provisioning advances with the same idempotency key and confirm one provider workflow.
-3. Exhaust or simulate the quota/reserve and confirm failure occurs before a provider activity ID appears.
-4. Force WebGL off and block OpenFreeMap; verify state boundary, cells, sites and job inspection remain usable in SVG.
-5. Drag a fixed/completed job, overlap one crew, choose an ineligible crew, or violate a dependency; verify the exact constraint is shown and the Working plan remains unchanged.
-6. Ask AI to assert a false number; verify official fields remain unchanged and unsupported model prose is not used.
-
-Provider activity IDs authenticate only against the provider. Checked-in JSON and hashes prove repository integrity, not independent provider origin; use the evaluator’s optional provider-verification tier when credentials permit.
+1. Remove or invalidate the provider key and confirm the header says Simulated run without covering the map.
+2. Retry while unavailable and confirm fallback remains active.
+3. Mock a successful retry and confirm the header becomes FortyGuard live.
+4. Create sites in hot/cool states and summer/winter dates; confirm every custom source remains labelled simulated.
+5. Run the same seed twice and confirm the generated operation and official result repeat.
+6. Force WebGL off and confirm map/cell interaction remains intact.
+7. Try outside-state and oversized sites and confirm server-side rejection.
+8. Restart the backend and confirm the documented limitation: custom process-local sites disappear and curated defaults return.

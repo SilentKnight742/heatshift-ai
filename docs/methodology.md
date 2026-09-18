@@ -1,22 +1,36 @@
 # Methodology
 
-HeatShift is a historical planning simulator. It has no forecast or future-weather mode.
+HeatShift is a historical single-day planning simulator. It has no forecast or future-weather mode.
 
-## Environmental acquisition and reconstruction
+## Environmental inputs
 
-For each site-day, HeatShift requests a 100m heatmap at 15:00 local and a full-day environmental series. The daily cell field is reconstructed hourly as:
+### Built-in sites
+
+Phoenix, Houston and Miami select one exact day from cached FortyGuard site-week files. Hourly site conditions and spatial heat cells retain their provider/activity metadata and repository integrity hash.
+
+For a job at a specific location, HeatShift uses the nearest cell’s difference from the 15:00 cell mean as a spatial offset:
 
 ```text
-hourly cell apparent temperature
-  = hourly site apparent temperature
-  + (15:00 cell temperature − 15:00 heatmap mean)
+task apparent temperature
+  = nearest hourly site apparent temperature
+  + (nearest 15:00 cell temperature − 15:00 heat-cell mean)
 ```
 
-This preserves the provider’s hourly site curve and that day’s spatial differences. Each task segment uses the derived value from the cell nearest its mapped job point, so a valid location edit can change the task score. It does not claim that every cell was independently measured or requested at every hour. Wet bulb and humidity are hourly provider arrays. The provider’s clear-sky GHI is a daily time-range summary and is labeled as a daily average rather than an hourly reading. Satellite land-cover percentages are also explanatory context; none of these values are hidden score weights.
+This preserves the provider’s hourly site curve and spatial pattern without claiming every cell was independently measured each hour.
+
+### Custom-site fallback
+
+Custom sites currently use a transparent simulated profile. Peak temperature is influenced by day-of-year, latitude, broad regional heat behavior, longitude and seed. Humid-region states receive a different humidity curve. The simulator creates:
+
+- 24 hourly air/apparent/wet-bulb temperatures, humidity and clear-sky solar values;
+- a 7×9 field of 100 m heat cells;
+- simulated vegetation, pavement and building percentages.
+
+These values are labelled `simulated`. They are not FortyGuard evidence or measured historical weather.
 
 ## Task-hour screening score
 
-Version `heatshift-screening-v2.0` is deterministic:
+Version `heatshift-daily-screening-v1.0` is deterministic:
 
 ```text
 score = apparent-temperature points
@@ -26,11 +40,11 @@ score = apparent-temperature points
       + solar/shade points
 ```
 
-Apparent temperature contributes 8 / 20 / 32 / 45 / 55 points across `≤35`, `>35–38`, `>38–41`, `>41–44`, and `>44°C`. Workload contributes 4 / 12 / 20 / 28 for light through very heavy; acclimatization contributes 0 / 8 / 14 for acclimatized, returning and new; PPE contributes 0 / 7 / 14; unshaded work from 10:00–16:00 adds 10 while shade subtracts 10. The result is clamped to 0–100.
+Apparent temperature contributes 8 / 20 / 32 / 45 / 55 points across `≤35`, `>35–38`, `>38–41`, `>41–44`, and `>44°C`. Workload contributes 4 / 12 / 20 / 28 for light through very heavy. Acclimatization contributes 0 / 8 / 14 for acclimatized, returning and new. PPE contributes 0 / 7 / 14. Unshaded work from 10:00–15:59 adds 10; shaded work subtracts 10. The result is clamped to 0–100.
 
-Score 50 is the product’s disclosed high-risk screening threshold. It is not a medical threshold, WBGT work/rest limit, regulatory exposure limit, or injury probability.
+Each job is scored in 30-minute segments and duration-weighted into its schedule-entry score. Score 50 is the product’s disclosed high-risk comparison threshold—not a medical threshold, WBGT work/rest limit, regulatory limit or injury probability.
 
-## Primary metrics
+## Metrics
 
 ### Site Thermal Burden
 
@@ -38,42 +52,49 @@ Score 50 is the product’s disclosed high-risk screening threshold. It is not a
 Σ max(0, hourly apparent temperature − 35°C) × 1 hour
 ```
 
-Reported in apparent-temperature degree-hours per day/week. The 35°C baseline is configurable product policy, not a medical limit.
+Reported as apparent-temperature degree-hours for the operation day. The 35°C baseline is configurable product policy, not a medical limit.
 
 ### Crew Exposure Load
 
 ```text
-Σ (task screening score ÷ 100) × task duration hours × crew worker count
+Σ (task screening score ÷ 100) × task duration hours × crew size
 ```
 
-Reported as risk-weighted worker-hours by crew and plan, including highest crew and spread. It is a scheduling indicator, not physiological dose.
+Reported as risk-weighted worker-hours by plan. It is a scheduling indicator, not physiological dose.
 
 ### Operational Disruption
 
-HeatShift does not invent a composite disruption score. It reports total minutes shifted, crew reassignments, cross-day moves, manager deferrals, cancellations and hard-constraint violations separately.
+HeatShift does not invent a composite disruption score. It reports total shifted minutes and crew reassignments separately; hard-constraint violations must remain zero.
 
 ### Downstream outcomes
 
-Worker-minutes at score ≥50, high-risk worker-hours avoided, percent reduction, jobs rescheduled, fixed jobs preserved, residual alerts, work retained and constraint validity follow from the task-hour schedule comparison. Percentage reduction is threshold-dependent and does not mean injuries prevented.
+Worker-minutes at score ≥50, high-risk worker-hours avoided, percentage reduction, moved jobs, fixed jobs preserved, residual alerts, retained work and validity all follow from comparing Original with HeatShift. Percentage reduction is threshold-dependent and never means injuries prevented.
 
-## Seven-day optimizer
+## Operation generation
 
-Candidate starts are aligned to 30 minutes. The engine uses deterministic greedy placement followed by bounded local improvement with a lexicographic objective:
+The user selects a seed, 4–12 crews and 3–6 jobs per crew. The seed deterministically controls worker counts, PPE, acclimatization, workloads, job duration, assigned/eligible crews, mobility, shade and site-relative positions.
 
-1. All hard constraints satisfied.
-2. Minimum worker-minutes at score ≥50.
-3. Minimum total Crew Exposure Load.
-4. Minimum highest individual crew load.
-5. Minimum shifted minutes, crew changes and cross-day moves.
+An available LLM may return twelve short activity labels based only on the site type. If unavailable or invalid, a checked-in deterministic label list is used. The LLM never creates official numbers or constraints.
 
-Hard constraints preserve fixed, completed and in-progress work; exact duration; date/time windows; site/week and shift bounds; crew non-overlap; eligible crews; and dependency order. Cross-day moves require an explicit window. Cancelled work is excluded; deferred work remains pending later; the proposal never cancels a job. The result is the best validated feasible plan found within bounded search, not a proven global optimum.
+## Single-day optimizer
 
-## AI authority
+Candidate starts are aligned to 30 minutes between each movable job’s earliest start and latest finish. For every eligible crew and start, the engine recalculates the task score and rejects crew overlap. Two bounded improvement passes use this lexicographic objective:
 
-Groq receives the completed deterministic result and may write four short Markdown sections: Decision, Why, Next actions, and Still exposed. Qwen 3.8 runs with reasoning effort `none` because this is a concise explanation task and the free-tier output budget must remain available for the final answer. Numeric values are allowlisted. Unsupported numbers, missing required sections, material contradictions, or out-of-range length discard the model response and select the deterministic briefing.
+1. minimum worker-minutes at score ≥50;
+2. minimum total Crew Exposure Load;
+3. minimum highest individual crew load;
+4. minimum total shifted minutes;
+5. minimum crew reassignments;
+6. deterministic tie-break by time, crew and job ID.
 
-Contextual Q&A receives one authoritative selected site/job/crew/metric/plan context and a question up to 500 characters. It may explain facts but cannot mutate anything. Twenty model answers per anonymous user/day are permitted; deterministic inspector explanations are unlimited and Q&A history stays in browser session storage.
+Fixed jobs keep their original entry. Durations, allowed windows, crew eligibility and non-overlap are validated after optimization. The proposal never drops a job, so productive task time remains 100% in the current daily flow.
+
+The result is the best validated feasible plan found by bounded deterministic search, not a proof of global optimality.
+
+## Briefing authority
+
+The operational briefing is generated from the completed deterministic result. Markdown is rendered with GFM support and raw HTML disabled. The briefing cannot change a schedule or metric.
 
 ## Empirical boundary
 
-The separate HEAT-SHIELD benchmark applies the policy without fitting to 566 controlled human-exposure sessions. Its association with measured work-capacity loss supports usefulness as a screening ordering signal, not clinical validity, causality, injury reduction, or universal safety effectiveness. See [real-data-validation.md](real-data-validation.md).
+The independent HEAT-SHIELD benchmark applies the policy without fitting to 566 controlled human-exposure sessions. Its association with measured work-capacity loss supports use as a screening ordering signal, not clinical validity, causality, injury reduction or universal safety effectiveness. See [real-data-validation.md](real-data-validation.md).

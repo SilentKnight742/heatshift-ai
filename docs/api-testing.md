@@ -1,75 +1,96 @@
 # API testing guide
 
-Set `API` to the local or deployed backend and obtain an anonymous Supabase access token. Local development may instead send `x-heatshift-workspace: evaluator-1` while `HEATSHIFT_LOCAL_AUTH=true`.
+Set `API` to the local or deployed backend. Local development may use the workspace header while `HEATSHIFT_LOCAL_AUTH=true`:
 
 ```bash
 export API=http://127.0.0.1:8000
-export TOKEN='anonymous-supabase-access-token'
+export WORKSPACE=evaluator-1
 curl -sS "$API/health"
-curl -sS "$API/api/states"
-curl -sS -H "Authorization: Bearer $TOKEN" "$API/api/workspace"
-curl -sS -H "Authorization: Bearer $TOKEN" "$API/api/states/AZ/sites"
+curl -sS "$API/api/daily/states"
+curl -sS -H "x-heatshift-workspace: $WORKSPACE" "$API/api/daily/sites"
 ```
 
-## Create a site
+Hosted production requires an anonymous Supabase bearer token instead:
 
 ```bash
-curl -sS -X POST "$API/api/sites" \
-  -H "Authorization: Bearer $TOKEN" \
+export TOKEN='anonymous-supabase-access-token'
+export AUTH="Authorization: Bearer $TOKEN"
+```
+
+Replace `-H "x-heatshift-workspace: $WORKSPACE"` below with `-H "$AUTH"` for production.
+
+## Provider status
+
+```bash
+curl -sS -H "x-heatshift-workspace: $WORKSPACE" \
+  "$API/api/daily/provider-status"
+
+curl -sS -H "x-heatshift-workspace: $WORKSPACE" \
+  "$API/api/daily/provider-status?refresh=true"
+```
+
+The first call may use the five-minute cache. `refresh=true` is the Retry behavior and forces a new read-only provider request. Expected states are `available`, `provider_unavailable`, `credits_exhausted` and `not_configured`. This route must never submit a provider activity.
+
+## Create a daily site
+
+```bash
+curl -sS -X POST "$API/api/daily/sites" \
+  -H "x-heatshift-workspace: $WORKSPACE" \
   -H 'content-type: application/json' \
   -d '{
     "name":"Evaluation yard",
     "state_code":"AZ",
     "site_type":"maintenance yard",
-    "geometry":{"type":"circle","longitude":-112.05,"latitude":33.45,"radius_m":500},
-    "timezone":"America/Phoenix"
+    "operation_date":"2024-07-18",
+    "geometry":{"type":"coordinates","longitude":-112.05,"latitude":33.45,"radius_m":600}
   }'
 ```
 
-Use the returned `site_id` for site, crew and job CRUD. Mutations from another bearer identity must return not found/unauthorized rather than exposing the record.
+The response must say `site_created`, `simulated_local` and Analysis not ready in the UI. Geometry outside Arizona, above 10 mi², before 2019 or in the future must fail.
 
-## Crew and job
+Save the returned ID:
 
 ```bash
-curl -sS -X POST "$API/api/sites/$SITE/crews" \
-  -H "Authorization: Bearer $TOKEN" -H 'content-type: application/json' \
-  -d '{"name":"Evaluation crew","worker_count":4,"acclimatization_status":"returning","ppe_level":"medium","default_workload":"heavy"}'
+export SITE='site-returned-by-api'
 ```
 
-Jobs require location, duration in 30-minute increments, workload, original/earliest/latest timestamps, assigned and eligible crew IDs, dependencies, mobility, shade and status. Coordinates must be inside the site. Dependency cycles and off-site locations return a validation error.
-
-## Plan routes
+## Generate the operation
 
 ```bash
-curl -sS -X POST -H "Authorization: Bearer $TOKEN" "$API/api/sites/$SITE/plans/optimize"
-curl -sS -X PATCH "$API/api/sites/$SITE/plans/working" \
-  -H "Authorization: Bearer $TOKEN" -H 'content-type: application/json' \
-  -d '{"entries":[...]}'
-```
-
-The API recomputes duration, end, source and score. A client cannot manufacture a lower score. Inspect `original`, `heatshift`, `working`, `plan_metrics`, `explanations`, `limitations`, `briefing_markdown` and `briefing_mode`.
-
-## Live provisioning
-
-```bash
-curl -sS -X POST "$API/api/sites/$SITE/provision/advance" \
-  -H "Authorization: Bearer $TOKEN" \
+curl -sS -X POST "$API/api/daily/sites/$SITE/simulation" \
+  -H "x-heatshift-workspace: $WORKSPACE" \
   -H 'content-type: application/json' \
-  -d '{"turnstile_token":"TOKEN","idempotency_key":"stable-request-key","week_start":"2024-07-15"}'
+  -d '{"seed":90210,"crew_count":6,"jobs_per_crew":3}'
 ```
 
-Call the same route in short intervals with the same key, or inspect `GET /api/sites/$SITE/provision`. A valid response exposes completed/pending stages and activity IDs. Invalid Turnstile, quota, usage or reserve must fail before submission. Never use an arbitrary repeated token: Turnstile tokens are single-use.
+The response contains 24 simulated hourly conditions, 63 cells, six crews and eighteen jobs. Repeating the same request yields the same operation.
 
-## Contextual Q&A
+## Run analysis
 
 ```bash
-curl -sS -X POST "$API/api/analyses/$ANALYSIS/questions" \
-  -H "Authorization: Bearer $TOKEN" -H 'content-type: application/json' \
-  -d '{"question":"Why did this job move?","context":{"type":"job","id":"JOB_ID"}}'
+curl -sS -X POST "$API/api/daily/sites/$SITE/analysis" \
+  -H "x-heatshift-workspace: $WORKSPACE"
 ```
 
-The server resolves the selected record; client-provided fabricated facts are not authoritative. Q&A is limited to 20 model answers per owner/day.
+Inspect `original`, `heatshift`, `metrics`, `explanations`, `recommendations`, `limitations` and `briefing_markdown`. Analysis before simulation must fail. The proposal must preserve duration, fixed jobs, eligibility, time windows and crew non-overlap.
+
+## Reset
+
+```bash
+curl -sS -X POST "$API/api/daily/reset" \
+  -H "x-heatshift-workspace: $WORKSPACE"
+```
+
+The custom site disappears and Phoenix, Houston and Miami return.
 
 ## Compatibility and evidence
 
-`POST /api/demo`, `GET /api/validation/heatshield`, `/docs`, and `/health` remain public. Compatibility responses describe the earlier narrow replay and should not be mistaken for the weekly domain API.
+`POST /api/demo`, `GET /api/validation/heatshield`, `/docs` and `/health` remain public. They preserve earlier replay/validation contracts and should not be mistaken for the active daily console API.
+
+## Safety checks
+
+- A different workspace must not see another process-local custom site.
+- Provider retry must stay read-only.
+- Client input cannot supply an official task score or proposed schedule.
+- Simulated evidence must never be returned with source `FortyGuard`.
+- Hosted mode must reject the local workspace header when `HEATSHIFT_LOCAL_AUTH=false`.
