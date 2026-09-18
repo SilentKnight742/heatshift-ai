@@ -368,7 +368,8 @@ class DailyStore:
         if metrics.tasks_rescheduled:
             recommendations.append(f"Review {metrics.tasks_rescheduled} proposed time changes before adopting the plan.")
         if metrics.residual_alerts:
-            recommendations.append(f"Keep controls in place for {metrics.residual_alerts} jobs still at or above score 50.")
+            job_label = "job" if metrics.residual_alerts == 1 else "jobs"
+            recommendations.append(f"Keep controls in place for {metrics.residual_alerts} {job_label} still at or above score 50.")
         if metrics.crew_load_spread > 8:
             recommendations.append("Review the highest-loaded crew and eligible reassignments before work starts.")
         return DailyAnalysis(
@@ -392,6 +393,7 @@ class DailyStore:
 
 
 def _briefing(site: DailySite, metrics) -> str:
+    residual_label = "job remains" if metrics.residual_alerts == 1 else "jobs remain"
     return (
         "## Decision\n\n"
         f"Review the proposed day plan for **{site.name}**. HeatShift moves **{metrics.tasks_rescheduled} jobs** "
@@ -404,7 +406,7 @@ def _briefing(site: DailySite, metrics) -> str:
         f"The plan shifts **{metrics.disruption.total_minutes_shifted} minutes** in total and makes "
         f"**{metrics.disruption.crew_reassignments} crew reassignments**. Every fixed job and task duration is preserved.\n\n"
         "## Still exposed\n\n"
-        f"**{metrics.residual_alerts} jobs** remain at or above the screening threshold. Keep recovery, hydration, "
+        f"**{metrics.residual_alerts} {residual_label}** at or above the screening threshold. Keep recovery, hydration, "
         "work/rest and on-site measurement controls in the manager's decision."
     )
 
