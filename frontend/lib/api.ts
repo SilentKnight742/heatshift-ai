@@ -470,6 +470,112 @@ export interface ProvisionStatus {
   activity_ids: Record<string, string>;
   error: string | null;
 }
+
+export type DailyWorkflowStage = "site_created" | "simulation_ready" | "analyzed";
+export interface DailySite {
+  site_id: string;
+  owner_id: string | null;
+  name: string;
+  state_code: string;
+  site_type: string;
+  operation_date: string;
+  geometry: GeoJSONFeatureCollection;
+  centroid: GeoPoint;
+  timezone: string;
+  curated: boolean;
+  workflow_stage: DailyWorkflowStage;
+  evidence_kind: "fortyguard_cached" | "simulated_local";
+  source_label: string;
+  thermal_burden: number | null;
+}
+export interface DailyCrew {
+  crew_id: string;
+  site_id: string;
+  name: string;
+  worker_count: number;
+  acclimatization_status: "new" | "returning" | "acclimatized";
+  ppe_level: "low" | "medium" | "high";
+  default_workload: "light" | "moderate" | "heavy" | "very_heavy";
+}
+export interface DailyJob {
+  job_id: string;
+  site_id: string;
+  name: string;
+  location: GeoPoint;
+  duration_minutes: number;
+  workload: "light" | "moderate" | "heavy" | "very_heavy";
+  original_start: string;
+  earliest_start: string;
+  latest_finish: string;
+  assigned_crew_id: string;
+  eligible_crew_ids: string[];
+  movable: boolean;
+  shaded: boolean;
+}
+export interface DailyEvidence {
+  date: string;
+  conditions: Array<Omit<HourlyCondition, "source"> & { source: "FortyGuard" | "HeatShift-derived" | "simulated" }>;
+  heat_cells: Array<Omit<HeatCell, "source"> & { source: "FortyGuard" | "HeatShift-derived" | "simulated" }>;
+  satellite_context: Record<string, number>;
+  heatmap_activity_id: string | null;
+  environmental_activity_id: string | null;
+  integrity_sha256: string | null;
+}
+export interface DailySimulationSummary {
+  seed: number;
+  generation_mode: "ai_enriched_stochastic" | "deterministic_stochastic";
+  crew_count: number;
+  job_count: number;
+  worker_count: number;
+  fixed_job_count: number;
+  movable_job_count: number;
+}
+export interface DailyScheduleEntry {
+  job_id: string;
+  crew_id: string;
+  start: string;
+  end: string;
+  source: "original" | "heatshift";
+  screening_score: number;
+}
+export interface DailyMetrics {
+  original_exposure_worker_minutes: number;
+  proposed_exposure_worker_minutes: number;
+  high_risk_hours_avoided: number;
+  risk_reduction_percent: number;
+  tasks_rescheduled: number;
+  fixed_tasks_preserved: number;
+  residual_alerts: number;
+  productive_task_time_retained_percent: number;
+  constraint_valid: boolean;
+  site_thermal_burden_degree_hours: number;
+  original_crew_exposure_load: number;
+  proposed_crew_exposure_load: number;
+  highest_loaded_crew_id: string | null;
+  crew_load_spread: number;
+  disruption: { total_minutes_shifted: number; crew_reassignments: number; hard_constraint_violations: number };
+}
+export interface DailyAnalysis {
+  analysis_id: string;
+  site_id: string;
+  operation_date: string;
+  policy_version: string;
+  original: DailyScheduleEntry[];
+  heatshift: DailyScheduleEntry[];
+  metrics: DailyMetrics;
+  explanations: Record<string, MetricExplanation>;
+  recommendations: string[];
+  limitations: string[];
+  briefing_markdown: string;
+}
+export interface DailyWorkspace {
+  site: DailySite;
+  evidence: DailyEvidence | null;
+  crews: DailyCrew[];
+  jobs: DailyJob[];
+  simulation: DailySimulationSummary | null;
+  analysis: DailyAnalysis | null;
+}
 export interface AuthSession { accessToken: string | null; workspaceId: string; mode: "supabase" | "local"; refreshToken?: string; expiresAt?: number }
 
 const SESSION_KEY = "heatshift-anonymous-session-v2";
@@ -574,4 +680,15 @@ export const weeklyApi = {
   ask: (session: AuthSession, analysisId: string, question: string, context: Record<string, unknown>) => workspaceFetch<{ answer_markdown: string; mode: string; remaining_today: number }>(session, `/api/analyses/${analysisId}/questions`, { method: "POST", body: JSON.stringify({ question, context }) }),
   provision: (session: AuthSession, siteId: string, turnstileToken: string, idempotencyKey: string, weekStart: string) => workspaceFetch<ProvisionStatus>(session, `/api/sites/${siteId}/provision/advance`, { method: "POST", body: JSON.stringify({ turnstile_token: turnstileToken, idempotency_key: idempotencyKey, week_start: weekStart }) }),
   provisionStatus: (session: AuthSession, siteId: string) => workspaceFetch<ProvisionStatus>(session, `/api/sites/${siteId}/provision`),
+};
+
+export const dailyApi = {
+  states: (session: AuthSession) => workspaceFetch<StateOption[]>(session, "/api/daily/states"),
+  sites: (session: AuthSession) => workspaceFetch<DailySite[]>(session, "/api/daily/sites"),
+  stateSites: (session: AuthSession, stateCode: string) => workspaceFetch<DailySite[]>(session, `/api/daily/states/${stateCode}/sites`),
+  site: (session: AuthSession, siteId: string) => workspaceFetch<DailyWorkspace>(session, `/api/daily/sites/${siteId}`),
+  createSite: (session: AuthSession, payload: Record<string, unknown>) => workspaceFetch<DailySite>(session, "/api/daily/sites", { method: "POST", body: JSON.stringify(payload) }),
+  generate: (session: AuthSession, siteId: string, payload: { seed: number; crew_count: number; jobs_per_crew: number }) => workspaceFetch<DailyWorkspace>(session, `/api/daily/sites/${siteId}/simulation`, { method: "POST", body: JSON.stringify(payload) }),
+  analyze: (session: AuthSession, siteId: string) => workspaceFetch<DailyAnalysis>(session, `/api/daily/sites/${siteId}/analysis`, { method: "POST" }),
+  deleteSite: (session: AuthSession, siteId: string) => workspaceFetch<void>(session, `/api/daily/sites/${siteId}`, { method: "DELETE" }),
 };

@@ -5,9 +5,9 @@ from fastapi.middleware.cors import CORSMiddleware
 
 from .config import settings
 from .routes.analyses import router as analyses_router
+from .routes.daily import router as daily_router
 from .routes.health import router as health_router
 from .routes.validation import router as validation_router
-from .routes.weekly import router as weekly_router
 
 
 app = FastAPI(
@@ -25,7 +25,7 @@ app.add_middleware(
 app.include_router(health_router)
 app.include_router(analyses_router)
 app.include_router(validation_router)
-app.include_router(weekly_router)
+app.include_router(daily_router)
 
 
 @app.get("/")
@@ -37,5 +37,5 @@ async def root() -> dict:
         "demo": "POST /api/demo",
         "custom_analysis": "POST /api/analyze",
         "empirical_validation": "/api/validation/heatshield",
-        "weekly_operations": "/api/states",
+        "daily_operations": "/api/daily/sites",
     }
