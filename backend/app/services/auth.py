@@ -26,6 +26,14 @@ async def require_workspace(
     x_heatshift_workspace: str | None = Header(default=None),
 ) -> WorkspacePrincipal:
     """Verify Supabase anonymous users; allow an explicit local adapter in dev/CI."""
+    if settings.weekly_local_auth and x_heatshift_workspace and not authorization:
+        workspace = x_heatshift_workspace.strip()
+        if not workspace or len(workspace) > 100:
+            raise HTTPException(status_code=400, detail="Invalid local workspace ID")
+        principal = WorkspacePrincipal(user_id=workspace, access_token=None, local=True)
+        current_workspace_principal.set(principal)
+        return principal
+
     if settings.supabase_url:
         if not authorization or not authorization.startswith("Bearer "):
             raise HTTPException(status_code=401, detail="A Supabase anonymous bearer token is required")

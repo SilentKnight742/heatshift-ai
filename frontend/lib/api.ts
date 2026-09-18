@@ -576,6 +576,14 @@ export interface DailyWorkspace {
   simulation: DailySimulationSummary | null;
   analysis: DailyAnalysis | null;
 }
+export interface DailyProviderStatus {
+  state: "available" | "provider_unavailable" | "credits_exhausted" | "not_configured";
+  live_available: boolean;
+  fallback_active: boolean;
+  credits_remaining: number | null;
+  checked_at: string;
+  message: string;
+}
 export interface AuthSession { accessToken: string | null; workspaceId: string; mode: "supabase" | "local"; refreshToken?: string; expiresAt?: number }
 
 const SESSION_KEY = "heatshift-anonymous-session-v2";
@@ -685,6 +693,8 @@ export const weeklyApi = {
 export const dailyApi = {
   states: (session: AuthSession) => workspaceFetch<StateOption[]>(session, "/api/daily/states"),
   sites: (session: AuthSession) => workspaceFetch<DailySite[]>(session, "/api/daily/sites"),
+  providerStatus: (session: AuthSession, refresh = false) => workspaceFetch<DailyProviderStatus>(session, `/api/daily/provider-status${refresh ? "?refresh=true" : ""}`),
+  reset: (session: AuthSession) => workspaceFetch<DailySite[]>(session, "/api/daily/reset", { method: "POST" }),
   stateSites: (session: AuthSession, stateCode: string) => workspaceFetch<DailySite[]>(session, `/api/daily/states/${stateCode}/sites`),
   site: (session: AuthSession, siteId: string) => workspaceFetch<DailyWorkspace>(session, `/api/daily/sites/${siteId}`),
   createSite: (session: AuthSession, payload: Record<string, unknown>) => workspaceFetch<DailySite>(session, "/api/daily/sites", { method: "POST", body: JSON.stringify(payload) }),

@@ -132,6 +132,16 @@ class DailyStore:
                 self._workspaces[owner_id] = await self._default_records()
             return self._workspaces[owner_id]
 
+    async def reset(self, owner_id: str) -> list[DailySite]:
+        """Replace one anonymous daily workspace with pristine curated defaults."""
+        defaults = await self._default_records()
+        async with self._lock:
+            self._workspaces[owner_id] = defaults
+        return sorted(
+            (record.site.model_copy(deep=True) for record in defaults.values()),
+            key=lambda item: item.name,
+        )
+
     async def _default_records(self) -> dict[str, DailyRecord]:
         records: dict[str, DailyRecord] = {}
         for config in CURATED_DAILY_SITES:
@@ -298,4 +308,3 @@ def _briefing(site: DailySite, metrics) -> str:
 
 daily_store = DailyStore()
 daily_state_options = state_options()
-

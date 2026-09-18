@@ -1,7 +1,8 @@
 import { fireEvent, render, screen, waitFor } from "@testing-library/react";
 import { beforeEach, describe, expect, it, vi } from "vitest";
 import DailyConsole from "@/components/DailyConsole";
-import { pointInGeometry, temperatureForCell } from "@/components/DailyMap";
+import { heatColorForCell, heatColorForTemperature, pointInGeometry, temperatureForCell, temperatureScaleForEvidence } from "@/components/DailyMap";
+import ProductHeader from "@/components/ProductHeader";
 import type { DailyAnalysis, DailyEvidence, DailySite, DailyWorkspace } from "@/lib/api";
 
 const geometry = { type: "FeatureCollection" as const, features: [{ type: "Feature" as const, properties: {}, geometry: { type: "Polygon", coordinates: [[[-112.1, 33.4], [-112, 33.4], [-112, 33.5], [-112.1, 33.5], [-112.1, 33.4]]] } }] };
@@ -35,6 +36,7 @@ describe("daily operations product", () => {
   beforeEach(() => {
     vi.stubEnv("NEXT_PUBLIC_SUPABASE_URL", "");
     vi.stubEnv("NEXT_PUBLIC_SUPABASE_PUBLISHABLE_KEY", "");
+    window.localStorage.clear();
   });
 
   it("reconstructs an hourly cell value and associates points with the cell", () => {
@@ -43,25 +45,106 @@ describe("daily operations product", () => {
     expect(pointInGeometry(-111, 34, evidence.heat_cells[0].geometry)).toBe(false);
   });
 
+  it("derives one fixed continuous scale from all available state hours", () => {
+    const stateEvidence = { ...evidence, conditions: [{ ...evidence.conditions[0], timestamp: "2024-07-18T06:00:00-07:00", apparent_temperature_c: 31.2 }, evidence.conditions[0]] };
+    const scale = temperatureScaleForEvidence([stateEvidence]);
+    expect(scale).toEqual({ minimum: 31, maximum: 43 });
+    expect(heatColorForTemperature(-20, scale!)).toBe(heatColorForTemperature(31, scale!));
+    expect(heatColorForTemperature(80, scale!)).toBe(heatColorForTemperature(43, scale!));
+    expect(heatColorForTemperature(35, scale!)).not.toBe(heatColorForTemperature(36, scale!));
+    expect(new Set([31, 33, 35, 37, 39, 41, 43].map((value) => heatColorForTemperature(value, scale!))).size).toBe(7);
+    expect(heatColorForCell(38, scale!, 0)).not.toBe(heatColorForCell(38, scale!, 1));
+    expect(heatColorForCell(38, scale!, .5)).toBe(heatColorForTemperature(38, scale!));
+  });
+
   it("starts with the state map, then exposes map analytics and sanitized briefing content", async () => {
     vi.stubGlobal("fetch", vi.fn(async (input: string | URL) => {
       const url = String(input);
-      const body = url.endsWith("/api/daily/states") ? [{ code: "AZ", name: "Arizona" }] : url.endsWith("/api/daily/sites") ? [site] : workspace;
+      const body = url.includes("/api/daily/provider-status") ? { state: "available", live_available: true, fallback_active: false, credits_remaining: 500000, checked_at: "2026-09-18T00:00:00Z", message: "FortyGuard responded." } : url.endsWith("/api/daily/states") ? [{ code: "AZ", name: "Arizona" }] : url.endsWith("/api/daily/sites") ? [site] : workspace;
       return new Response(JSON.stringify(body), { status: 200, headers: { "content-type": "application/json" } });
     }));
     const { container } = render(<DailyConsole />);
     expect(await screen.findByText("Arizona operations")).toBeInTheDocument();
-    fireEvent.click(screen.getByRole("tab", { name: "Test yard" }));
+    fireEvent.click(screen.getByRole("tab", { name: /Test yard Analysis ready/ }));
     await waitFor(() => expect(screen.getByText("Cached FortyGuard evidence")).toBeInTheDocument());
     expect(screen.getByText("Generate a new simulation")).toBeInTheDocument();
     expect(screen.getByText("Run HeatShift analysis")).toBeInTheDocument();
+    expect(screen.queryByText("Three-step flow")).not.toBeInTheDocument();
+    expect(screen.queryByText("Real conditions and fictional work stay separate.")).not.toBeInTheDocument();
     expect(screen.queryByText(/week starts/i)).not.toBeInTheDocument();
     expect(screen.queryByText("One day, before and after")).not.toBeInTheDocument();
+    fireEvent.click(screen.getByRole("button", { name: "+ Create site" }));
+    const createDialog = screen.getByRole("dialog", { name: "Create daily operation site" });
+    expect(createDialog).toHaveClass("create-site-backdrop");
+    expect(screen.getByLabelText("Site name")).toHaveFocus();
+    fireEvent.keyDown(window, { key: "Escape" });
+    expect(screen.queryByRole("dialog", { name: "Create daily operation site" })).not.toBeInTheDocument();
+    expect(screen.getByRole("heading", { name: "Operational briefing" })).toBeInTheDocument();
+    expect(screen.getByRole("heading", { name: "Analysis results" })).toBeInTheDocument();
     expect(screen.getByRole("button", { name: /Exposure reduction 100.0%/ })).toBeInTheDocument();
-    fireEvent.click(screen.getByRole("button", { name: /AI briefing Read/ }));
     expect(screen.getByRole("heading", { name: "Decision" })).toBeInTheDocument();
     expect(screen.getAllByText("Material transfer").some((element) => element.tagName === "STRONG")).toBe(true);
     expect(container.querySelector("script")).toBeNull();
+    fireEvent.click(screen.getByRole("button", { name: "Collapse AI briefing" }));
+    expect(screen.queryByRole("heading", { name: "Decision" })).not.toBeInTheDocument();
+    expect(screen.getByRole("button", { name: "Expand AI briefing" })).toBeInTheDocument();
+    fireEvent.click(screen.getByRole("button", { name: "Expand AI briefing" }));
+    expect(screen.getByRole("heading", { name: "Decision" })).toBeInTheDocument();
+    const exposureCard = screen.getByRole("button", { name: /Exposure reduction 100.0%/ });
+    fireEvent.click(exposureCard);
+    expect(screen.getByRole("button", { name: "Collapse analytics" })).toBeInTheDocument();
+    expect(screen.getByRole("heading", { name: "Exposure reduction" })).toBeInTheDocument();
+    expect(screen.getByRole("button", { name: "Collapse AI briefing" })).toBeInTheDocument();
+    expect(screen.getByRole("heading", { name: "Decision" })).toBeInTheDocument();
+    expect(exposureCard).toHaveAttribute("aria-expanded", "true");
+    fireEvent.click(exposureCard);
+    expect(screen.queryByRole("heading", { name: "Exposure reduction" })).not.toBeInTheDocument();
+    expect(screen.getByRole("button", { name: "Expand analytics" })).toBeInTheDocument();
+    expect(exposureCard).toHaveAttribute("aria-expanded", "false");
+    fireEvent.click(screen.getByRole("button", { name: "Collapse setup panel" }));
+    expect(container.querySelector(".map-console-shell")).toHaveClass("sidebar-collapsed");
+    fireEvent.click(screen.getByRole("button", { name: "Expand setup panel" }));
+    expect(container.querySelector(".map-console-shell")).not.toHaveClass("sidebar-collapsed");
+    fireEvent.click(screen.getByRole("button", { name: /Operation & method/ }));
+    expect(screen.getByRole("dialog", { name: "Test yard operation and methodology" })).toBeInTheDocument();
+    expect(screen.getByRole("heading", { name: "See the operation HeatShift received, what changed, and why." })).toBeInTheDocument();
+    expect(screen.getByText("Job-level comparison")).toBeInTheDocument();
+    expect(screen.getByRole("heading", { name: "A constrained search, not an AI guess." })).toBeInTheDocument();
+    fireEvent.click(screen.getByRole("button", { name: /Back to map/ }));
+    expect(screen.queryByRole("dialog", { name: "Test yard operation and methodology" })).not.toBeInTheDocument();
+    window.dispatchEvent(new Event("heatshift:open-guide"));
+    expect(await screen.findByRole("dialog", { name: "HeatShift console guide" })).toBeInTheDocument();
+    expect(screen.getByText("Built-in sites use cached FortyGuard evidence. New-site weather and all generated operations are clearly labeled.")).toBeInTheDocument();
+    fireEvent.click(screen.getByRole("button", { name: "Close console guide" }));
     await waitFor(() => expect(fetch).toHaveBeenCalledWith(expect.stringContaining("/api/daily/sites/site-test"), expect.anything()));
+  });
+
+  it("keeps fallback in the header and exits it only after a successful retry", async () => {
+    let providerRetries = 0;
+    vi.stubGlobal("fetch", vi.fn(async (input: string | URL) => {
+      const url = String(input);
+      if (url.includes("/api/daily/provider-status")) {
+        if (url.includes("refresh=true")) providerRetries += 1;
+        const available = providerRetries >= 2;
+        return new Response(JSON.stringify(available
+          ? { state: "available", live_available: true, fallback_active: false, credits_remaining: 500000, checked_at: "2026-09-18T00:02:00Z", message: "FortyGuard responded." }
+          : { state: "provider_unavailable", live_available: false, fallback_active: true, credits_remaining: null, checked_at: "2026-09-18T00:00:00Z", message: "A secure connection to FortyGuard could not be established. Cached and simulated evidence remain available." }), { status: 200, headers: { "content-type": "application/json" } });
+      }
+      const body = url.endsWith("/api/daily/states") ? [{ code: "AZ", name: "Arizona" }] : url.endsWith("/api/daily/sites") ? [site] : workspace;
+      return new Response(JSON.stringify(body), { status: 200, headers: { "content-type": "application/json" } });
+    }));
+    render(<><ProductHeader consoleMode /><DailyConsole /></>);
+    const provider = await screen.findByRole("status");
+    await waitFor(() => expect(provider).toHaveTextContent("Simulated run"));
+    expect(provider).toHaveTextContent("FortyGuard could not be reached securely");
+    expect(screen.queryByRole("dialog", { name: "FortyGuard fallback active" })).not.toBeInTheDocument();
+    expect(await screen.findByText("Arizona operations")).toBeInTheDocument();
+    fireEvent.click(screen.getByRole("button", { name: "Retry" }));
+    await waitFor(() => expect(provider).toHaveTextContent("Simulated run"));
+    expect(screen.getByRole("button", { name: "Retry" })).toBeInTheDocument();
+    fireEvent.click(screen.getByRole("button", { name: "Retry" }));
+    await waitFor(() => expect(provider).toHaveTextContent("FortyGuard live"));
+    expect(provider).toHaveTextContent("The data provider responded successfully.");
+    expect(screen.queryByRole("button", { name: "Retry" })).not.toBeInTheDocument();
   });
 });

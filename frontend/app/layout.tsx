@@ -10,7 +10,7 @@ export const metadata: Metadata = {
     title: "HeatShift AI · Move the work. Keep the shift.",
     description: "See which work should move, when it can move, and which heat risk still requires human action.",
     type: "website",
-    images: [{ url: "/og.png", width: 1731, height: 909, alt: "HeatShift AI — Plan the work. Respect the heat." }],
+    images: [{ url: "/og.png", width: 1731, height: 909, alt: "HeatShift AI — The heat-aware operating plan." }],
   },
   twitter: {
     card: "summary_large_image",

@@ -1,14 +1,19 @@
 from __future__ import annotations
 
 import uuid
+from dataclasses import replace
 from datetime import date
 
 import httpx
 import pytest
 
 from app.main import app
+from app.clients.fortyguard import FortyGuardError
+from app.config import settings
+from app.services import auth as auth_service
 from app.services.daily_analysis import HIGH_RISK_THRESHOLD, site_thermal_burden, validate_schedule
 from app.services.daily_store import daily_store
+from app.services.provider_status import ProviderStatusService
 
 
 @pytest.fixture
@@ -22,12 +27,68 @@ def headers() -> dict[str, str]:
 
 
 @pytest.mark.anyio
+async def test_explicit_local_workspace_still_works_when_cloud_credentials_exist(
+    client: httpx.AsyncClient, monkeypatch: pytest.MonkeyPatch
+):
+    monkeypatch.setattr(
+        auth_service,
+        "settings",
+        replace(settings, supabase_url="https://example.supabase.co", weekly_local_auth=True),
+    )
+    response = await client.get("/api/daily/sites", headers=headers())
+    assert response.status_code == 200
+
+
+@pytest.mark.anyio
+async def test_hosted_mode_never_accepts_the_local_workspace_adapter(
+    client: httpx.AsyncClient, monkeypatch: pytest.MonkeyPatch
+):
+    monkeypatch.setattr(
+        auth_service,
+        "settings",
+        replace(settings, supabase_url="https://example.supabase.co", weekly_local_auth=False),
+    )
+    response = await client.get("/api/daily/sites", headers=headers())
+    assert response.status_code == 401
+
+
+@pytest.mark.anyio
 async def test_state_catalog_keeps_all_states_and_dc(client: httpx.AsyncClient):
     response = await client.get("/api/daily/states")
     assert response.status_code == 200
     values = response.json()
     assert len(values) == 51
     assert {"code": "DC", "name": "Washington, DC"} in values
+
+
+@pytest.mark.anyio
+async def test_provider_status_activates_fallback_without_blocking_cached_work():
+    class UnavailableProvider:
+        configured = True
+
+        async def get_credit_usage(self):
+            raise FortyGuardError("provider unavailable")
+
+    service = ProviderStatusService(ttl_seconds=300)
+    result = await service.check(client=UnavailableProvider())
+    assert result["state"] == "provider_unavailable"
+    assert result["fallback_active"] is True
+    assert "Cached and simulated evidence remain available" in result["message"]
+
+
+@pytest.mark.anyio
+async def test_provider_status_detects_exhausted_credits():
+    class ExhaustedProvider:
+        configured = True
+
+        async def get_credit_usage(self):
+            return {"data": {"remaining_credits": 0}}
+
+    service = ProviderStatusService(ttl_seconds=300)
+    result = await service.check(client=ExhaustedProvider())
+    assert result["state"] == "credits_exhausted"
+    assert result["credits_remaining"] == 0
+    assert result["fallback_active"] is True
 
 
 @pytest.mark.anyio
@@ -172,3 +233,26 @@ async def test_curated_sites_cannot_be_deleted(client: httpx.AsyncClient):
     response = await client.delete("/api/daily/sites/desertline-phoenix", headers=headers())
     assert response.status_code == 409
     assert "cannot be deleted" in response.json()["detail"]
+
+
+@pytest.mark.anyio
+async def test_daily_workspace_reset_removes_custom_sites_and_restores_defaults(client: httpx.AsyncClient):
+    owner = headers()
+    created = await client.post("/api/daily/sites", headers=owner, json={
+        "name": "Temporary field operation",
+        "state_code": "AZ",
+        "site_type": "utility maintenance",
+        "operation_date": "2026-08-20",
+        "geometry": {"type": "coordinates", "longitude": -112.05, "latitude": 33.45, "radius_m": 500},
+    })
+    assert created.status_code == 201
+    assert len((await client.get("/api/daily/sites", headers=owner)).json()) == 4
+
+    reset = await client.post("/api/daily/reset", headers=owner)
+
+    assert reset.status_code == 200
+    assert {site["site_id"] for site in reset.json()} == {
+        "desertline-phoenix", "gulfgate-houston", "sungrid-miami"
+    }
+    assert all(site["workflow_stage"] == "analyzed" for site in reset.json())
+    assert (await client.get(f"/api/daily/sites/{created.json()['site_id']}", headers=owner)).status_code == 404

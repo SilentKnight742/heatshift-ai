@@ -1,10 +1,11 @@
 from __future__ import annotations
 
-from fastapi import APIRouter, Depends, HTTPException, Response, status
+from fastapi import APIRouter, Depends, HTTPException, Query, Response, status
 
 from ..models.daily import DailyAnalysis, DailySite, DailySiteCreate, DailyWorkspace, SimulationRequest
 from ..services.auth import WorkspacePrincipal, require_workspace
 from ..services.daily_store import daily_state_options, daily_store
+from ..services.provider_status import provider_status_service
 
 
 router = APIRouter(prefix="/api/daily", tags=["daily operations"])
@@ -24,6 +25,21 @@ async def states() -> list[dict[str, str]]:
 @router.get("/sites", response_model=list[DailySite])
 async def sites(principal: WorkspacePrincipal = Depends(require_workspace)) -> list[DailySite]:
     return await daily_store.list_sites(principal.user_id)
+
+
+@router.get("/provider-status")
+async def provider_status(
+    refresh: bool = Query(False),
+    _principal: WorkspacePrincipal = Depends(require_workspace),
+) -> dict:
+    return await provider_status_service.check(force=refresh)
+
+
+@router.post("/reset", response_model=list[DailySite])
+async def reset_workspace(
+    principal: WorkspacePrincipal = Depends(require_workspace),
+) -> list[DailySite]:
+    return await daily_store.reset(principal.user_id)
 
 
 @router.get("/states/{state_code}/sites", response_model=list[DailySite])
@@ -84,4 +100,3 @@ async def delete_site(
     except (KeyError, ValueError) as exc:
         raise _error(exc) from exc
     return Response(status_code=status.HTTP_204_NO_CONTENT)
-

@@ -26,9 +26,15 @@ interface DailyMapProps {
   jobs: DailyJob[];
   schedule: DailyScheduleEntry[];
   selectedCellId: string | null;
+  heatScale: TemperatureScale;
   onSelectSite: (siteId: string) => void;
   onSelectCell: (cell: CellSelection) => void;
   onMapPoint: (longitude: number, latitude: number) => void;
+}
+
+export interface TemperatureScale {
+  minimum: number;
+  maximum: number;
 }
 
 function coordinatePairs(value: unknown): number[][] {
@@ -78,11 +84,69 @@ export function temperatureForCell(evidence: DailyEvidence, cellId: string, hour
   return Number((condition.apparent_temperature_c + cell.temperature_c_1500 - mean).toFixed(2));
 }
 
-function heatColor(temperature: number) {
-  if (temperature < 35) return "#42b98c";
-  if (temperature < 38) return "#e6b146";
-  if (temperature < 42) return "#ed704d";
-  return "#cc315c";
+const HEAT_STOPS = [
+  { point: 0, color: [49, 54, 149] },
+  { point: .09, color: [54, 89, 180] },
+  { point: .18, color: [44, 123, 182] },
+  { point: .27, color: [0, 166, 202] },
+  { point: .36, color: [0, 203, 188] },
+  { point: .45, color: [101, 223, 155] },
+  { point: .55, color: [184, 239, 131] },
+  { point: .64, color: [255, 242, 122] },
+  { point: .69, color: [255, 211, 78] },
+  { point: .75, color: [249, 155, 61] },
+  { point: .8, color: [237, 90, 54] },
+  { point: .85, color: [215, 48, 39] },
+  { point: .91, color: [169, 21, 74] },
+  { point: 1, color: [103, 0, 31] },
+];
+
+function heatRgbForTemperature(temperature: number, scale: TemperatureScale) {
+  const position = scale.maximum === scale.minimum ? .5 : Math.max(0, Math.min(1, (temperature - scale.minimum) / (scale.maximum - scale.minimum)));
+  const upperIndex = HEAT_STOPS.findIndex((stop) => stop.point >= position);
+  if (upperIndex <= 0) return HEAT_STOPS[0].color;
+  const upper = HEAT_STOPS[upperIndex];
+  const lower = HEAT_STOPS[upperIndex - 1];
+  const progress = (position - lower.point) / (upper.point - lower.point);
+  return lower.color.map((channel, index) => Number((channel + (upper.color[index] - channel) * progress).toFixed(1)));
+}
+
+export function heatColorForTemperature(temperature: number, scale: TemperatureScale) {
+  return `rgb(${heatRgbForTemperature(temperature, scale).join(",")})`;
+}
+
+export function heatColorForCell(temperature: number, scale: TemperatureScale, withinHourPosition: number) {
+  const base = heatRgbForTemperature(temperature, scale);
+  const localPosition = Math.max(0, Math.min(1, withinHourPosition));
+  const target = localPosition < .5 ? 255 : 24;
+  const amount = localPosition < .5 ? (.5 - localPosition) * .64 : (localPosition - .5) * .44;
+  const shaded = base.map((channel) => Number((channel + (target - channel) * amount).toFixed(1)));
+  return `rgb(${shaded.join(",")})`;
+}
+
+export function temperatureScaleForEvidence(evidenceItems: DailyEvidence[]): TemperatureScale | null {
+  let minimum = Number.POSITIVE_INFINITY;
+  let maximum = Number.NEGATIVE_INFINITY;
+  evidenceItems.forEach((evidence) => {
+    if (!evidence.conditions.length) return;
+    const mean = evidence.heat_cells.reduce((total, cell) => total + cell.temperature_c_1500, 0) / Math.max(evidence.heat_cells.length, 1);
+    const offsets = evidence.heat_cells.length ? evidence.heat_cells.map((cell) => cell.temperature_c_1500 - mean) : [0];
+    const minimumOffset = Math.min(...offsets);
+    const maximumOffset = Math.max(...offsets);
+    evidence.conditions.forEach((condition) => {
+      minimum = Math.min(minimum, condition.apparent_temperature_c + minimumOffset);
+      maximum = Math.max(maximum, condition.apparent_temperature_c + maximumOffset);
+    });
+  });
+  if (!Number.isFinite(minimum) || !Number.isFinite(maximum)) return null;
+  let roundedMinimum = Math.floor(minimum);
+  let roundedMaximum = Math.ceil(maximum);
+  if (roundedMaximum - roundedMinimum < 6) {
+    const centre = (roundedMinimum + roundedMaximum) / 2;
+    roundedMinimum = Math.floor(centre - 3);
+    roundedMaximum = Math.ceil(centre + 3);
+  }
+  return { minimum: roundedMinimum, maximum: roundedMaximum };
 }
 
 function burdenColor(value: number | null) {
@@ -200,6 +264,9 @@ export default function DailyMap(props: DailyMapProps) {
       previousSiteRef.current = site.site_id;
     }
     if (!props.evidence) return;
+    const hourlyTemperatures = props.evidence.heat_cells.map((cell) => temperatureForCell(props.evidence!, cell.cell_id, props.hour) ?? cell.apparent_temperature_c);
+    const hourlyMinimum = Math.min(...hourlyTemperatures);
+    const hourlyMaximum = Math.max(...hourlyTemperatures);
     props.evidence.heat_cells.forEach((cell) => {
       const temperature = temperatureForCell(props.evidence!, cell.cell_id, props.hour) ?? cell.apparent_temperature_c;
       const cellJobs = props.jobs.filter((job) => pointInGeometry(job.location.longitude, job.location.latitude, cell.geometry));
@@ -208,10 +275,11 @@ export default function DailyMap(props: DailyMapProps) {
       const layer = L.geoJSON({ type: "Feature", properties: {}, geometry: cell.geometry } as unknown as GeoJsonObject, {
         style: {
           color: selected ? "#10271f" : active.length ? "#ffffff" : "rgba(22,55,42,.34)",
-          weight: selected ? 5 : active.length ? 3 : 1,
+          weight: selected ? 5 : active.length ? 6 : 1,
           opacity: 1,
-          fillColor: heatColor(temperature),
+          fillColor: heatColorForCell(temperature, props.heatScale, hourlyMaximum === hourlyMinimum ? .5 : (temperature - hourlyMinimum) / (hourlyMaximum - hourlyMinimum)),
           fillOpacity: selected ? .82 : .68,
+          className: active.length ? "heatshift-active-cell" : "",
         },
       });
       const [longitude, latitude] = geometryCentre(cell.geometry);
@@ -225,17 +293,17 @@ export default function DailyMap(props: DailyMapProps) {
         jobIds: cellJobs.map((job) => job.job_id),
         activeJobIds: active.map((job) => job.job_id),
       };
-      layer.bindTooltip(`<strong>${temperature.toFixed(1)}°C apparent</strong><br>${cellJobs.length} jobs · ${active.length} active`, { sticky: true, direction: "top", className: "heatshift-cell-tooltip" });
+      layer.bindTooltip(`<strong>${temperature.toFixed(2)}°C apparent</strong><br>${cellJobs.length} jobs · ${active.length} active`, { sticky: true, direction: "top", className: "heatshift-cell-tooltip" });
       layer.on("click", () => propsRef.current.onSelectCell(selection));
       layer.on("mouseover", () => layer.setStyle({ weight: selected ? 5 : 3, fillOpacity: .84 }));
-      layer.on("mouseout", () => layer.setStyle({ weight: selected ? 5 : active.length ? 3 : 1, fillOpacity: selected ? .82 : .68 }));
+      layer.on("mouseout", () => layer.setStyle({ weight: selected ? 5 : active.length ? 6 : 1, fillOpacity: selected ? .82 : .68 }));
       layer.on("add", () => requestAnimationFrame(() => layer.eachLayer((child) => {
         const element = (child as Path).getElement();
         if (!element) return;
         element.setAttribute("role", "button");
         element.setAttribute("tabindex", "0");
         element.setAttribute("data-cell-id", cell.cell_id);
-        element.setAttribute("aria-label", `${cell.cell_id}: ${temperature.toFixed(1)} degrees Celsius apparent, ${cellJobs.length} jobs, ${active.length} active`);
+        element.setAttribute("aria-label", `${cell.cell_id}: ${temperature.toFixed(2)} degrees Celsius apparent, ${cellJobs.length} jobs, ${active.length} active`);
         element.addEventListener("keydown", (event) => { const key = (event as KeyboardEvent).key; if (key === "Enter" || key === " ") propsRef.current.onSelectCell(selection); });
       })));
       layer.addTo(cellsGroup);
