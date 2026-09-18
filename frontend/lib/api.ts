@@ -596,7 +596,8 @@ async function resolveAnonymousSession(): Promise<AuthSession> {
   if (saved) {
     try {
       const parsed = JSON.parse(saved) as AuthSession;
-      if (!parsed.expiresAt || parsed.expiresAt > Date.now() + 60_000) return parsed;
+      if (parsed.mode === "local" && (!supabaseUrl || !publishableKey)) return parsed;
+      if (parsed.mode === "supabase" && parsed.accessToken && parsed.expiresAt && parsed.expiresAt > Date.now() + 60_000) return parsed;
       if (parsed.mode === "supabase" && parsed.refreshToken && supabaseUrl && publishableKey) {
         const refreshed = await fetch(`${supabaseUrl.replace(/\/$/, "")}/auth/v1/token?grant_type=refresh_token`, {
           method: "POST",
@@ -611,6 +612,7 @@ async function resolveAnonymousSession(): Promise<AuthSession> {
         }
       }
     } catch { /* Replace a corrupt session. */ }
+    window.localStorage.removeItem(SESSION_KEY);
   }
   if (supabaseUrl && publishableKey) {
     const response = await fetch(`${supabaseUrl.replace(/\/$/, "")}/auth/v1/signup`, {
@@ -650,11 +652,20 @@ export async function getAnonymousSession(): Promise<AuthSession> {
 }
 
 async function workspaceFetch<T>(session: AuthSession, path: string, init: RequestInit = {}): Promise<T> {
-  const headers = new Headers(init.headers);
-  if (init.body && !headers.has("content-type")) headers.set("content-type", "application/json");
-  if (session.accessToken) headers.set("authorization", `Bearer ${session.accessToken}`);
-  else headers.set("x-heatshift-workspace", session.workspaceId);
-  const response = await fetch(`${API_BASE}${path}`, { ...init, headers });
+  const request = (active: AuthSession) => {
+    const headers = new Headers(init.headers);
+    if (init.body && !headers.has("content-type")) headers.set("content-type", "application/json");
+    if (active.accessToken) headers.set("authorization", `Bearer ${active.accessToken}`);
+    else headers.set("x-heatshift-workspace", active.workspaceId);
+    return fetch(`${API_BASE}${path}`, { ...init, headers });
+  };
+  let response = await request(session);
+  if (response.status === 401 && session.mode === "supabase" && typeof window !== "undefined") {
+    window.localStorage.removeItem(SESSION_KEY);
+    const renewed = await getAnonymousSession();
+    Object.assign(session, renewed);
+    response = await request(renewed);
+  }
   if (!response.ok) {
     const body = await response.text();
     try {

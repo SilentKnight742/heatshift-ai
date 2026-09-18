@@ -1,5 +1,5 @@
 import { afterEach, describe, expect, it, vi } from "vitest";
-import { getAnonymousSession, getDemoScenario, getHeatshieldValidation, runDemo, runScenario } from "@/lib/api";
+import { dailyApi, getAnonymousSession, getDemoScenario, getHeatshieldValidation, runDemo, runScenario } from "@/lib/api";
 import { analysisFixture, scenarioFixture } from "./fixtures";
 
 describe("frontend API client", () => {
@@ -26,6 +26,51 @@ describe("frontend API client", () => {
     expect(first).toEqual(second);
     expect(first.workspaceId).toBe("workspace-a");
     expect(fetchMock).toHaveBeenCalledTimes(1);
+  });
+
+  it("refreshes a legacy Supabase session that has no expiry metadata", async () => {
+    process.env.NEXT_PUBLIC_SUPABASE_URL = "https://example.supabase.co";
+    process.env.NEXT_PUBLIC_SUPABASE_PUBLISHABLE_KEY = "sb_publishable_test";
+    window.localStorage.setItem("heatshift-anonymous-session-v2", JSON.stringify({
+      accessToken: "legacy-token",
+      refreshToken: "legacy-refresh",
+      workspaceId: "workspace-old",
+      mode: "supabase",
+    }));
+    const fetchMock = vi.fn().mockResolvedValue(new Response(JSON.stringify({
+      access_token: "renewed-token",
+      refresh_token: "renewed-refresh",
+      expires_in: 3600,
+      user: { id: "workspace-old" },
+    }), { status: 200 }));
+    vi.stubGlobal("fetch", fetchMock);
+
+    const session = await getAnonymousSession();
+
+    expect(session.accessToken).toBe("renewed-token");
+    expect(session.expiresAt).toBeGreaterThan(Date.now());
+    expect(fetchMock).toHaveBeenCalledWith(
+      "https://example.supabase.co/auth/v1/token?grant_type=refresh_token",
+      expect.objectContaining({ method: "POST" }),
+    );
+  });
+
+  it("replaces a rejected Supabase session once and retries the workspace request", async () => {
+    process.env.NEXT_PUBLIC_SUPABASE_URL = "https://example.supabase.co";
+    process.env.NEXT_PUBLIC_SUPABASE_PUBLISHABLE_KEY = "sb_publishable_test";
+    const session = { accessToken: "rejected-token", refreshToken: "rejected-refresh", workspaceId: "workspace-old", mode: "supabase" as const, expiresAt: Date.now() + 3_600_000 };
+    window.localStorage.setItem("heatshift-anonymous-session-v2", JSON.stringify(session));
+    const fetchMock = vi.fn()
+      .mockResolvedValueOnce(new Response(JSON.stringify({ detail: "Invalid or expired anonymous session" }), { status: 401 }))
+      .mockResolvedValueOnce(new Response(JSON.stringify({ access_token: "replacement-token", refresh_token: "replacement-refresh", expires_in: 3600, user: { id: "workspace-new" } }), { status: 200 }))
+      .mockResolvedValueOnce(new Response("[]", { status: 200 }));
+    vi.stubGlobal("fetch", fetchMock);
+
+    await expect(dailyApi.sites(session)).resolves.toEqual([]);
+
+    expect(session.accessToken).toBe("replacement-token");
+    expect(session.workspaceId).toBe("workspace-new");
+    expect(fetchMock).toHaveBeenCalledTimes(3);
   });
 
   it("runs the default analysis with the expected method and URL", async () => {

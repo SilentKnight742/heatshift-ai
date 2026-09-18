@@ -5,7 +5,7 @@
 | Layer | Current result | Scope |
 |---|---:|---|
 | Backend | 83 passed | Daily API, legacy compatibility, geometry, simulation, optimizer, metrics, provider status, authentication boundaries, FortyGuard contracts and independent claims |
-| Frontend unit/component | 16 passed | API/session handling, map calculations, Markdown safety, console interactions and provider fallback/retry transition |
+| Frontend unit/component | 18 passed | API/session renewal, map calculations, Markdown safety, console interactions and provider fallback/retry transition |
 | TypeScript | Passed | Complete frontend type check |
 | Production build | Passed | Next.js homepage and console |
 | Browser journeys | 8 product journeys in their intended desktop/mobile projects | Homepage, interactive map, operation story, provider retry, custom operation, no-WebGL path, typography and mobile layout |
@@ -41,6 +41,7 @@ No expected failure remains. AI prose cannot change official metrics or schedule
 - Guide, reset and full-screen site/method flows.
 - Custom site → generated operation → completed analysis → reset.
 - Header-only provider fallback, failed-retry persistence and successful live transition.
+- Legacy anonymous sessions are refreshed, and a rejected token is replaced once before the failed request is retried.
 - No blocking provider modal.
 - Leaflet/GeoJSON operation without WebGL.
 - Desktop/mobile overflow, keyboard semantics, ≥14 px body/form text, ≥12 px supporting text and ≥44 px primary controls.
