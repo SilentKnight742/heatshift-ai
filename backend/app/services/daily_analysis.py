@@ -159,6 +159,19 @@ def calculate_metrics(
 
 def metric_explanations(metrics: DailyMetrics) -> dict[str, MetricExplanation]:
     return {
+        "exposure": MetricExplanation(
+            metric="Original versus proposed exposure",
+            definition="Worker-minutes assigned to jobs with a screening score of 50 or higher, before and after rescheduling.",
+            formula="Σ crew size × task duration, for task-hour score ≥ 50",
+            inputs={
+                "original_worker_minutes": metrics.original_exposure_worker_minutes,
+                "proposed_worker_minutes": metrics.proposed_exposure_worker_minutes,
+                "score_threshold": HIGH_RISK_THRESHOLD,
+            },
+            source="HeatShift task-hour scores, fictional crew sizes and the two schedule versions",
+            comparison=f"{metrics.original_exposure_worker_minutes} → {metrics.proposed_exposure_worker_minutes} worker-minutes.",
+            limitations=["This is scheduled exposure above a product threshold, not a measured personal heat dose."],
+        ),
         "risk_reduction": MetricExplanation(
             metric="High-risk exposure reduction",
             definition="The change in worker-minutes scheduled at a task score of 50 or higher.",
@@ -171,6 +184,15 @@ def metric_explanations(metrics: DailyMetrics) -> dict[str, MetricExplanation]:
             source="HeatShift task-hour scores and schedule comparison",
             comparison=f"{metrics.original_exposure_worker_minutes} → {metrics.proposed_exposure_worker_minutes} worker-minutes at score 50 or higher.",
             limitations=["The result is threshold-dependent.", "It does not measure or predict injuries."],
+        ),
+        "high_risk_time": MetricExplanation(
+            metric="High-risk time avoided",
+            definition="The reduction in worker-hours assigned at a task score of 50 or higher.",
+            formula="(original high-risk worker-minutes − proposed high-risk worker-minutes) ÷ 60",
+            inputs={"worker_hours_avoided": metrics.high_risk_hours_avoided, "score_threshold": HIGH_RISK_THRESHOLD},
+            source="HeatShift task-hour scores and schedule comparison",
+            comparison=f"{metrics.high_risk_hours_avoided:.1f} high-risk worker-hours avoided.",
+            limitations=["The number changes when the disclosed score threshold changes."],
         ),
         "thermal_burden": MetricExplanation(
             metric="Site Thermal Burden",
@@ -198,6 +220,54 @@ def metric_explanations(metrics: DailyMetrics) -> dict[str, MetricExplanation]:
             source="Difference between the submitted and proposed schedules",
             comparison=f"{metrics.disruption.total_minutes_shifted} minutes shifted; {metrics.disruption.crew_reassignments} crew reassignments.",
             limitations=["HeatShift does not hide operational trade-offs inside one score."],
+        ),
+        "tasks_rescheduled": MetricExplanation(
+            metric="Tasks rescheduled",
+            definition="Movable jobs whose proposed start time differs from the submitted start time.",
+            formula="Count(proposed start ≠ original start)",
+            inputs={"tasks_rescheduled": metrics.tasks_rescheduled},
+            source="Difference between original and HeatShift schedule entries",
+            comparison=f"{metrics.tasks_rescheduled} tasks moved to a different start time.",
+            limitations=["The count does not by itself describe how far each task moved."],
+        ),
+        "fixed_preserved": MetricExplanation(
+            metric="Fixed tasks preserved",
+            definition="Jobs declared immovable that retain their submitted time and crew.",
+            formula="Count(jobs where movable = false and proposed entry = original entry)",
+            inputs={"fixed_tasks_preserved": metrics.fixed_tasks_preserved},
+            source="Fictional job constraints and validated HeatShift schedule",
+            comparison=f"{metrics.fixed_tasks_preserved} fixed tasks preserved.",
+            limitations=["Fixed status is a simulated operational input supplied before analysis."],
+        ),
+        "residual_alerts": MetricExplanation(
+            metric="Residual alerts",
+            definition="Proposed jobs that still have a screening score of 50 or higher after optimization.",
+            formula="Count(proposed task score ≥ 50)",
+            inputs={"residual_alerts": metrics.residual_alerts, "score_threshold": HIGH_RISK_THRESHOLD},
+            source="HeatShift proposed schedule task scores",
+            comparison=f"{metrics.residual_alerts} proposed jobs remain at or above score 50.",
+            limitations=["A lower count does not mean remaining work is safe or that heat risk is eliminated."],
+        ),
+        "retained_work": MetricExplanation(
+            metric="Productive task time retained",
+            definition="The share of submitted job duration retained in the proposed schedule.",
+            formula="proposed scheduled task-minutes ÷ original task-minutes × 100",
+            inputs={"percent_retained": metrics.productive_task_time_retained_percent},
+            source="Original and proposed schedule duration totals",
+            comparison=f"{metrics.productive_task_time_retained_percent:.0f}% of submitted task time retained.",
+            limitations=["Retaining scheduled time does not establish equal output quality or throughput."],
+        ),
+        "constraint_validity": MetricExplanation(
+            metric="Constraint validity",
+            definition="Whether the proposal preserves durations, fixed work, crew eligibility, non-overlap and each job's allowed window.",
+            formula="All hard-constraint checks must pass; violations = 0",
+            inputs={
+                "constraint_valid": metrics.constraint_valid,
+                "hard_constraint_violations": metrics.disruption.hard_constraint_violations,
+            },
+            source="Deterministic post-optimization schedule validator",
+            comparison=f"{metrics.disruption.hard_constraint_violations} hard constraint violations.",
+            limitations=["Only encoded constraints can be validated; unrecorded site rules remain the manager's responsibility."],
         ),
     }
 
@@ -310,4 +380,3 @@ def validate_schedule(entries: list[ScheduleEntry], jobs: list[DailyJob]) -> lis
 
 
 daily_optimizer = DailyOptimizer()
-

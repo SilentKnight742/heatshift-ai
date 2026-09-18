@@ -143,6 +143,11 @@ async def test_daily_optimizer_preserves_hard_constraints_and_metrics_are_tracea
     assert validate_schedule(record.analysis.heatshift, record.jobs) == []
     assert site_thermal_burden(record.evidence) == metrics["site_thermal_burden_degree_hours"]
     assert "formula" in analysis["explanations"]["crew_load"]
+    assert {
+        "exposure", "risk_reduction", "high_risk_time", "thermal_burden", "crew_load",
+        "disruption", "tasks_rescheduled", "fixed_preserved", "residual_alerts",
+        "retained_work", "constraint_validity",
+    } == set(analysis["explanations"])
 
 
 @pytest.mark.anyio
@@ -167,4 +172,3 @@ async def test_curated_sites_cannot_be_deleted(client: httpx.AsyncClient):
     response = await client.delete("/api/daily/sites/desertline-phoenix", headers=headers())
     assert response.status_code == 409
     assert "cannot be deleted" in response.json()["detail"]
-

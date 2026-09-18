@@ -1,7 +1,7 @@
 import { fireEvent, render, screen, waitFor } from "@testing-library/react";
 import { beforeEach, describe, expect, it, vi } from "vitest";
 import DailyConsole from "@/components/DailyConsole";
-import DailyMap from "@/components/DailyMap";
+import { pointInGeometry, temperatureForCell } from "@/components/DailyMap";
 import type { DailyAnalysis, DailyEvidence, DailySite, DailyWorkspace } from "@/lib/api";
 
 const geometry = { type: "FeatureCollection" as const, features: [{ type: "Feature" as const, properties: {}, geometry: { type: "Polygon", coordinates: [[[-112.1, 33.4], [-112, 33.4], [-112, 33.5], [-112.1, 33.5], [-112.1, 33.4]]] } }] };
@@ -35,32 +35,33 @@ describe("daily operations product", () => {
   beforeEach(() => {
     vi.stubEnv("NEXT_PUBLIC_SUPABASE_URL", "");
     vi.stubEnv("NEXT_PUBLIC_SUPABASE_PUBLISHABLE_KEY", "");
-    vi.spyOn(HTMLCanvasElement.prototype, "getContext").mockReturnValue(null);
   });
 
-  it("shows the SVG thermal field and returns a selected cell", async () => {
-    const onSelectCell = vi.fn();
-    const { container } = render(<DailyMap stateCode="AZ" mode="site" onMode={vi.fn()} sites={[site]} selectedSite={site} evidence={evidence} hour={15} jobs={[job]} crews={[crew]} onSelectSite={vi.fn()} onSelectJob={vi.fn()} onSelectCell={onSelectCell} onMapPoint={vi.fn()} />);
-    expect(await screen.findByRole("img", { name: "Test yard thermal field fallback" })).toBeInTheDocument();
-    fireEvent.click(container.querySelector('path[role="button"]')!);
-    expect(onSelectCell).toHaveBeenCalledWith(expect.objectContaining({ id: "cell-1", apparentTemperatureC: 43 }));
+  it("reconstructs an hourly cell value and associates points with the cell", () => {
+    expect(temperatureForCell(evidence, "cell-1", 15)).toBe(43);
+    expect(pointInGeometry(job.location.longitude, job.location.latitude, evidence.heat_cells[0].geometry)).toBe(true);
+    expect(pointInGeometry(-111, 34, evidence.heat_cells[0].geometry)).toBe(false);
   });
 
-  it("renders the daily flow, analysis result and sanitized Markdown", async () => {
+  it("starts with the state map, then exposes map analytics and sanitized briefing content", async () => {
     vi.stubGlobal("fetch", vi.fn(async (input: string | URL) => {
       const url = String(input);
       const body = url.endsWith("/api/daily/states") ? [{ code: "AZ", name: "Arizona" }] : url.endsWith("/api/daily/sites") ? [site] : workspace;
       return new Response(JSON.stringify(body), { status: 200, headers: { "content-type": "application/json" } });
     }));
     const { container } = render(<DailyConsole />);
-    expect(await screen.findByRole("heading", { name: "Test yard", level: 1 })).toBeInTheDocument();
+    expect(await screen.findByText("Arizona operations")).toBeInTheDocument();
+    fireEvent.click(screen.getByRole("tab", { name: "Test yard" }));
+    await waitFor(() => expect(screen.getByText("Cached FortyGuard evidence")).toBeInTheDocument());
     expect(screen.getByText("Generate a new simulation")).toBeInTheDocument();
     expect(screen.getByText("Run HeatShift analysis")).toBeInTheDocument();
     expect(screen.queryByText(/week starts/i)).not.toBeInTheDocument();
+    expect(screen.queryByText("One day, before and after")).not.toBeInTheDocument();
+    expect(screen.getByRole("button", { name: /Exposure reduction 100.0%/ })).toBeInTheDocument();
+    fireEvent.click(screen.getByRole("button", { name: /AI briefing Read/ }));
     expect(screen.getByRole("heading", { name: "Decision" })).toBeInTheDocument();
     expect(screen.getAllByText("Material transfer").some((element) => element.tagName === "STRONG")).toBe(true);
     expect(container.querySelector("script")).toBeNull();
-    expect(screen.getByText("100.0% lower")).toBeInTheDocument();
     await waitFor(() => expect(fetch).toHaveBeenCalledWith(expect.stringContaining("/api/daily/sites/site-test"), expect.anything()));
   });
 });
