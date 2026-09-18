@@ -126,25 +126,25 @@ def _timezone_for(state_code: str, longitude: float, latitude: float) -> str:
 class DailyStore:
     def __init__(self) -> None:
         self._workspaces: dict[str, dict[str, DailyRecord]] = {}
-        self._hydrated: set[str] = set()
+        self._curated_template: dict[str, DailyRecord] | None = None
         self._lock = asyncio.Lock()
 
     async def workspace(self, owner_id: str) -> dict[str, DailyRecord]:
         async with self._lock:
-            if owner_id not in self._workspaces:
-                self._workspaces[owner_id] = await self._default_records()
             principal = current_workspace_principal.get()
             if (
-                owner_id not in self._hydrated
-                and principal
+                principal
                 and principal.user_id == owner_id
                 and principal.access_token
                 and workspace_persistence.enabled
             ):
+                workspace = await self._default_records()
                 snapshot = await workspace_persistence.load(owner_id, principal.access_token)
                 if snapshot:
-                    self._restore_snapshot(self._workspaces[owner_id], snapshot)
-                self._hydrated.add(owner_id)
+                    self._restore_snapshot(workspace, snapshot)
+                self._workspaces[owner_id] = workspace
+            elif owner_id not in self._workspaces:
+                self._workspaces[owner_id] = await self._default_records()
             return self._workspaces[owner_id]
 
     async def save(self, owner_id: str) -> None:
@@ -155,23 +155,32 @@ class DailyStore:
         if workspace:
             await workspace_persistence.save(owner_id, principal.access_token, self._snapshot(workspace))
 
-    @staticmethod
-    def _snapshot(workspace: dict[str, DailyRecord]) -> dict[str, Any]:
+    def _snapshot(self, workspace: dict[str, DailyRecord]) -> dict[str, Any]:
+        def operation(record: DailyRecord) -> dict[str, Any]:
+            return {
+                "site": record.site.model_dump(mode="json"),
+                "evidence": record.evidence.model_dump(mode="json") if record.evidence else None,
+                "crews": [crew.model_dump(mode="json") for crew in record.crews],
+                "jobs": [job.model_dump(mode="json") for job in record.jobs],
+                "simulation": record.simulation.model_dump(mode="json") if record.simulation else None,
+                "analysis": record.analysis.model_dump(mode="json") if record.analysis else None,
+            }
+
+        custom_sites = {
+            site_id: operation(record)
+            for site_id, record in workspace.items()
+            if not record.site.curated
+        }
+        curated_operations = {}
+        for site_id, record in workspace.items():
+            template = (self._curated_template or {}).get(site_id)
+            if record.site.curated and template and operation(record) != operation(template):
+                curated_operations[site_id] = operation(record)
         return {
             "version": 2,
             "product": "daily",
-            "custom_sites": {
-                site_id: {
-                    "site": record.site.model_dump(mode="json"),
-                    "evidence": record.evidence.model_dump(mode="json") if record.evidence else None,
-                    "crews": [crew.model_dump(mode="json") for crew in record.crews],
-                    "jobs": [job.model_dump(mode="json") for job in record.jobs],
-                    "simulation": record.simulation.model_dump(mode="json") if record.simulation else None,
-                    "analysis": record.analysis.model_dump(mode="json") if record.analysis else None,
-                }
-                for site_id, record in workspace.items()
-                if not record.site.curated
-            },
+            "custom_sites": custom_sites,
+            "curated_operations": curated_operations,
         }
 
     @staticmethod
@@ -180,6 +189,17 @@ class DailyStore:
 
         if snapshot.get("version") != 2 or snapshot.get("product") != "daily":
             return
+        for site_id, value in snapshot.get("curated_operations", {}).items():
+            if site_id not in workspace:
+                continue
+            workspace[site_id] = DailyRecord(
+                site=DailySite.model_validate(value["site"]),
+                evidence=DailyEvidence.model_validate(value["evidence"]) if value.get("evidence") else None,
+                crews=[DailyCrew.model_validate(item) for item in value.get("crews", [])],
+                jobs=[DailyJob.model_validate(item) for item in value.get("jobs", [])],
+                simulation=SimulationSummary.model_validate(value["simulation"]) if value.get("simulation") else None,
+                analysis=DailyAnalysis.model_validate(value["analysis"]) if value.get("analysis") else None,
+            )
         for site_id, value in snapshot.get("custom_sites", {}).items():
             workspace[site_id] = DailyRecord(
                 site=DailySite.model_validate(value["site"]),
@@ -203,6 +223,8 @@ class DailyStore:
         )
 
     async def _default_records(self) -> dict[str, DailyRecord]:
+        if self._curated_template is not None:
+            return self._clone_records(self._curated_template)
         records: dict[str, DailyRecord] = {}
         for config in CURATED_DAILY_SITES:
             evidence = _cached_day(config)
@@ -227,7 +249,22 @@ class DailyStore:
             record.analysis = self._analyze(record)
             record.site.workflow_stage = WorkflowStage.ANALYZED
             records[site.site_id] = record
-        return records
+        self._curated_template = records
+        return self._clone_records(records)
+
+    @staticmethod
+    def _clone_records(records: dict[str, DailyRecord]) -> dict[str, DailyRecord]:
+        return {
+            site_id: DailyRecord(
+                site=record.site.model_copy(deep=True),
+                evidence=record.evidence.model_copy(deep=True) if record.evidence else None,
+                crews=[crew.model_copy(deep=True) for crew in record.crews],
+                jobs=[job.model_copy(deep=True) for job in record.jobs],
+                simulation=record.simulation.model_copy(deep=True) if record.simulation else None,
+                analysis=record.analysis.model_copy(deep=True) if record.analysis else None,
+            )
+            for site_id, record in records.items()
+        }
 
     async def list_sites(self, owner_id: str, state_code: str | None = None) -> list[DailySite]:
         workspace = await self.workspace(owner_id)
@@ -312,7 +349,9 @@ class DailyStore:
 
     async def delete(self, owner_id: str, site_id: str) -> None:
         workspace = await self.workspace(owner_id)
-        record = await self.record(owner_id, site_id)
+        if site_id not in workspace:
+            raise KeyError("site not found in this workspace")
+        record = workspace[site_id]
         if record.site.curated:
             raise ValueError("the three built-in examples cannot be deleted")
         del workspace[site_id]

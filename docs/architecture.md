@@ -87,7 +87,7 @@ The per-state temperature legend is fixed across the day. Within each selected h
 
 Supabase anonymous authentication protects hosted daily routes when configured. Local development may use `x-heatshift-workspace` only while `HEATSHIFT_LOCAL_AUTH=true`; Vercel must set it false.
 
-For authenticated users, FastAPI stores only private daily operational state in the RLS-protected `workspaces.domain_snapshot` column. A fresh Vercel instance reconstructs the three curated defaults from the repository, then overlays the user's custom sites, simulated evidence, crews, jobs and completed analyses from Supabase. Every create, generate, analyze, delete and reset mutation saves the new snapshot before returning. Local development without Supabase intentionally remains process-local.
+For authenticated users, FastAPI stores only private daily operational state in the RLS-protected `workspaces.domain_snapshot` column. Every authenticated request treats that snapshot as authoritative, reconstructs the three curated defaults from the repository, then overlays the user's custom sites, simulated evidence, crews, jobs and completed analyses. This prevents one warm Vercel instance from serving an older in-memory copy after another instance handles a mutation. Every create, generate, analyze, delete and reset mutation saves the new snapshot before returning. Local development without Supabase intentionally remains process-local.
 
 ## Deployment
 

@@ -191,10 +191,12 @@ async def test_daily_workspace_survives_a_fresh_serverless_store(monkeypatch: py
             operation_date=date(2026, 8, 20),
             geometry=GeometryInput(type="coordinates", longitude=-112.05, latitude=33.45, radius_m=500),
         ))
+        second_store = DailyStore()
+        assert (await second_store.site(owner_id, site.site_id)).site.workflow_stage == "site_created"
+
         await first_store.generate(owner_id, site.site_id, SimulationRequest(seed=44, crew_count=6, jobs_per_crew=3))
         await first_store.analyze(owner_id, site.site_id)
 
-        second_store = DailyStore()
         restored = await second_store.site(owner_id, site.site_id)
 
         assert restored.site.workflow_stage == "analyzed"
@@ -204,6 +206,10 @@ async def test_daily_workspace_survives_a_fresh_serverless_store(monkeypatch: py
         assert len(restored.crews) == 6
         assert len(restored.jobs) == 18
         assert restored.analysis.metrics.constraint_valid is True
+
+        await second_store.delete(owner_id, site.site_id)
+        with pytest.raises(KeyError, match="site not found"):
+            await DailyStore().site(owner_id, site.site_id)
     finally:
         current_workspace_principal.reset(token)
 
